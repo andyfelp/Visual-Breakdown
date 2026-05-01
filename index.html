@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Desglose Visual — Dirección de Fotografía</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Desglose">
+<meta name="theme-color" content="#0f0f0f">
+<link rel="apple-touch-icon" href="icon-512.png">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f0f0f;--surface:#1a1a1a;--surface2:#222;--surface3:#2a2a2a;--surface4:#313131;
+  --border:#333;--border2:#444;--text:#e8e8e8;--text2:#999;--text3:#666;
+  --accent:#c8a96e;--accent2:#a08050;
+  --int-bg:#0d1f35;--int-txt:#5b9bd5;
+  --ext-bg:#0d1f0f;--ext-txt:#5ba86b;
+  --dia-bg:#2a1f0a;--dia-txt:#c8a040;
+  --noche-bg:#12103a;--noche-txt:#8080d0;
+  --amanecer-bg:#2a120a;--amanecer-txt:#d08060;
+  --atardecer-bg:#2a0d1a;--atardecer-txt:#d06090;
+  --alta-bg:#2a0d0d;--alta-txt:#d05050;--alta-border:#8b2020;
+  --media-bg:#2a1a0d;--media-txt:#d09040;--media-border:#8b5020;
+  --baja-bg:#0d2010;--baja-txt:#50a060;--baja-border:#207030;
+  --optica-bg:#1a1030;--optica-txt:#9080d0;
+  --sel-bg:#1a2a1a;--sel-border:#3a6a3a;
+  --r:6px;--r2:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;min-height:100vh}
+
+/* TOPBAR */
+.topbar{position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--border);padding:0 1.25rem;display:flex;align-items:center;gap:.75rem;height:52px}
+.topbar-logo{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}
+.topbar-sep{width:1px;height:20px;background:var(--border);flex-shrink:0}
+.topbar-actions{display:flex;gap:5px;margin-left:auto;flex-wrap:wrap;align-items:center}
+#sel-count{font-family:'DM Mono',monospace;font-size:11px;color:var(--baja-txt);white-space:nowrap;display:none}
+
+/* BUTTONS */
+.btn{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.06em;padding:6px 13px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--surface3);color:var(--text)}
+.btn-accent{background:var(--accent);color:#000;border-color:var(--accent);font-weight:500}
+.btn-accent:hover{background:#dbb97e;color:#000}
+.btn-green{background:#1a3a1a;color:#6abf6a;border-color:#3a6a3a}
+.btn-green:hover{background:#1f4a1f;color:#7fd47f}
+.btn-danger{color:#d05050;border-color:#4a1515;background:transparent}
+.btn-danger:hover{background:var(--alta-bg)}
+
+/* LAYOUT */
+.layout{display:flex;height:calc(100vh - 52px);overflow:hidden}
+
+/* SIDEBAR EPISODIOS */
+.sidebar-eps{width:185px;min-width:185px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sidebar-title{padding:.85rem 1rem .4rem;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase}
+.sidebar-list{flex:1;overflow-y:auto;padding:.4rem}
+.ep-item{padding:7px 9px;border-radius:var(--r);cursor:pointer;display:flex;align-items:center;gap:6px;margin-bottom:2px;transition:background .1s}
+.ep-item:hover{background:var(--surface2)}
+.ep-item.active{background:var(--surface3)}
+.ep-num{font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);min-width:24px}
+.ep-name{font-size:12px;color:var(--text2);flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.ep-item.active .ep-name{color:var(--text)}
+.ep-badge{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);background:rgba(255,255,255,.05);padding:1px 5px;border-radius:8px}
+.sidebar-add{padding:.6rem;border-top:1px solid var(--border)}
+
+/* SIDEBAR SECUENCIAS */
+.sidebar-seqs{width:210px;min-width:210px;background:var(--surface2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sidebar-seqs .sidebar-title{color:var(--accent);opacity:.7}
+.seq-item{padding:7px 8px;border-radius:var(--r);cursor:pointer;display:flex;align-items:flex-start;gap:6px;margin-bottom:2px;transition:background .1s;position:relative}
+.seq-item:hover{background:var(--surface3)}
+.seq-item.active{background:var(--surface4);border-left:2px solid var(--accent)}
+.seq-item.selected{background:var(--sel-bg);border-left:2px solid #3a6a3a}
+.seq-item.selected.active{background:#1f3a2a;border-left:2px solid var(--accent)}
+
+/* CHECKBOX */
+.seq-check{width:16px;height:16px;min-width:16px;border-radius:3px;border:1px solid var(--border2);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;margin-top:2px;transition:all .15s;flex-shrink:0}
+.seq-check.checked{background:#2a5a2a;border-color:#4a8a4a}
+.seq-check.checked::after{content:'✓';font-size:10px;color:#7fd47f;line-height:1}
+
+.seq-num{font-family:'DM Mono',monospace;font-size:10px;color:var(--accent2);min-width:20px;padding-top:1px}
+.seq-info{flex:1;overflow:hidden}
+.seq-name{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+.seq-item.active .seq-name{color:var(--text)}
+.seq-meta{display:flex;gap:3px;flex-wrap:wrap}
+.seq-pill{font-family:'DM Mono',monospace;font-size:9px;padding:1px 5px;border-radius:8px;white-space:nowrap}
+.seq-dif-alta{background:var(--alta-bg);color:var(--alta-txt)}
+.seq-dif-media{background:var(--media-bg);color:var(--media-txt)}
+.seq-dif-baja{background:var(--baja-bg);color:var(--baja-txt)}
+.seq-ie-int{background:var(--int-bg);color:var(--int-txt)}
+.seq-ie-ext{background:var(--ext-bg);color:var(--ext-txt)}
+.seq-ie-intext{background:#1a1a2a;color:#8888cc}
+.no-ep-seqs{padding:1rem;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:.05em;text-align:center}
+
+/* MAIN */
+.main{flex:1;overflow-y:auto;padding:1.5rem}
+
+/* EP HEADER */
+.ep-header{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:1.25rem 1.5rem;margin-bottom:1.25rem}
+.ep-header-top{display:flex;align-items:center;gap:1rem;margin-bottom:1rem}
+.ep-header-num{font-family:'DM Mono',monospace;font-size:20px;color:var(--accent);min-width:56px}
+.ep-meta-grid{display:grid;grid-template-columns:1fr 1fr 1fr 2fr;gap:10px;margin-bottom:1rem}
+
+/* SEQ CARD */
+.seq-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;margin-bottom:1rem}
+.seq-card-topbar{display:flex;align-items:center;gap:8px;padding:.9rem 1.25rem;background:var(--surface2);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.seq-card-topbar.alta{border-left:3px solid var(--alta-border)}
+.seq-card-topbar.media{border-left:3px solid var(--media-border)}
+.seq-card-topbar.baja{border-left:3px solid var(--baja-border)}
+.seq-card-num{font-family:'DM Mono',monospace;font-size:13px;color:var(--accent);min-width:28px}
+.seq-card-title{font-size:14px;font-weight:600;color:var(--text);flex:1}
+.seq-body{padding:1.1rem 1.25rem}
+
+/* METRICS */
+.metrics{display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:.55rem .9rem;min-width:72px}
+.metric-val{font-family:'DM Mono',monospace;font-size:20px;color:var(--text);line-height:1}
+.metric-val.alta{color:var(--alta-txt)}
+.metric-val.media{color:var(--media-txt)}
+.metric-val.baja{color:var(--baja-txt)}
+.metric-lbl{font-size:10px;color:var(--text3);margin-top:3px;font-family:'DM Mono',monospace;letter-spacing:.05em}
+
+/* FIELDS */
+.section-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;margin-top:4px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.grid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:10px}
+.field,.meta-field{display:flex;flex-direction:column;gap:4px}
+.field label,.meta-field label{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase}
+.field input,.field select,.field textarea,.meta-field input,.meta-field select{font-family:'DM Sans',sans-serif;font-size:13px;padding:6px 10px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);color:var(--text);width:100%;outline:none;transition:border-color .15s}
+.field input:focus,.field select:focus,.field textarea:focus,.meta-field input:focus,.meta-field select:focus{border-color:var(--accent2)}
+.field textarea{resize:vertical;min-height:60px;line-height:1.55}
+.divider{border:none;border-top:1px solid var(--border);margin:12px 0}
+.seq-actions{display:flex;gap:6px;padding-top:10px;flex-wrap:wrap}
+
+/* BADGES */
+.badge{font-family:'DM Mono',monospace;font-size:10px;padding:2px 8px;border-radius:20px;letter-spacing:.04em;white-space:nowrap}
+.badge-int{background:var(--int-bg);color:var(--int-txt)}
+.badge-ext{background:var(--ext-bg);color:var(--ext-txt)}
+.badge-intext{background:#1a1a2a;color:#8888cc}
+.badge-dia{background:var(--dia-bg);color:var(--dia-txt)}
+.badge-noche{background:var(--noche-bg);color:var(--noche-txt)}
+.badge-amanecer{background:var(--amanecer-bg);color:var(--amanecer-txt)}
+.badge-atardecer{background:var(--atardecer-bg);color:var(--atardecer-txt)}
+.badge-indet{background:var(--surface3);color:var(--text3)}
+.badge-alta{background:var(--alta-bg);color:var(--alta-txt)}
+.badge-media{background:var(--media-bg);color:var(--media-txt)}
+.badge-baja{background:var(--baja-bg);color:var(--baja-txt)}
+.badge-optica{background:var(--optica-bg);color:var(--optica-txt)}
+
+/* IMAGES */
+.img-section-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.img-gallery{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.img-thumb-wrap{position:relative;width:110px;height:78px;border-radius:var(--r);overflow:hidden;border:1px solid var(--border2);cursor:pointer;flex-shrink:0;background:var(--surface2)}
+.img-thumb-wrap img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .2s}
+.img-thumb-wrap:hover img{transform:scale(1.04)}
+.img-thumb-del{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.8);border:none;color:#fff;border-radius:3px;font-size:11px;width:20px;height:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s}
+.img-thumb-wrap:hover .img-thumb-del{opacity:1}
+.img-thumb-caption{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.65);font-size:10px;color:#ddd;padding:2px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.img-drop-zone{display:flex;align-items:center;justify-content:center;gap:8px;border:1px dashed var(--border2);border-radius:var(--r);padding:9px 16px;cursor:pointer;color:var(--text3);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.05em;transition:all .15s}
+.img-drop-zone:hover,.img-drop-zone.drag-over{border-color:var(--accent2);color:var(--accent);background:rgba(200,169,110,.05)}
+
+/* LIGHTBOX */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.lightbox.open{opacity:1;pointer-events:all}
+.lightbox img{max-width:88vw;max-height:78vh;object-fit:contain;border-radius:var(--r)}
+.lightbox-caption{margin-top:12px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);min-height:18px}
+.lightbox-close{position:absolute;top:1.5rem;right:1.5rem;background:var(--surface2);border:1px solid var(--border2);color:var(--text2);font-size:16px;width:36px;height:36px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.lightbox-close:hover{color:var(--text);background:var(--surface3)}
+.lightbox-edit{margin-top:10px}
+.lightbox-edit input{font-family:'DM Mono',monospace;font-size:12px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:6px 12px;border-radius:var(--r);width:320px;outline:none;text-align:center}
+
+/* DAY LABEL MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);padding:1.5rem;width:360px;display:flex;flex-direction:column;gap:1rem}
+.modal h3{font-size:15px;font-weight:600;color:var(--text)}
+.modal p{font-size:12px;color:var(--text2);line-height:1.5}
+.modal input{font-family:'DM Sans',sans-serif;font-size:14px;padding:8px 12px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface2);color:var(--text);width:100%;outline:none}
+.modal input:focus{border-color:var(--accent2)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end}
+
+/* SELECTION BAR */
+.sel-bar{background:var(--sel-bg);border:1px solid var(--sel-border);border-radius:var(--r2);padding:.85rem 1.25rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.sel-bar-count{font-family:'DM Mono',monospace;font-size:12px;color:#7fd47f;letter-spacing:.05em}
+.sel-bar-list{flex:1;display:flex;flex-wrap:wrap;gap:6px}
+.sel-tag{font-family:'DM Mono',monospace;font-size:10px;padding:2px 8px;border-radius:12px;background:var(--surface3);color:var(--text2);border:1px solid var(--border2)}
+.sel-bar-actions{display:flex;gap:6px}
+
+/* TOAST */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--surface3);border:1px solid var(--border2);color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:10px 18px;border-radius:var(--r);opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;z-index:9999}
+.toast.show{opacity:1;transform:translateY(0)}
+.empty{text-align:center;padding:3rem;color:var(--text3);font-family:'DM Mono',monospace;font-size:12px;border:1px dashed var(--border);border-radius:var(--r2);letter-spacing:.05em}
+.no-sel{display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;color:var(--text3);font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.06em;gap:1rem;text-align:center}
+
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* ── PRINT / PDF STYLES ── */
+@media print{
+  body{background:#fff;color:#111;font-family:'DM Sans',sans-serif}
+  .topbar,.layout>.sidebar-eps,.layout>.sidebar-seqs{display:none!important}
+  .main{padding:0;overflow:visible}
+  .print-doc{display:block!important}
+  .app-ui{display:none!important}
+  .pdf-cover{page-break-after:always;padding:3rem 2rem}
+  .pdf-seq{page-break-inside:avoid;margin-bottom:2rem;border:1px solid #ccc;border-radius:8px;overflow:hidden}
+  .pdf-seq-head{padding:.8rem 1rem;background:#111;color:#fff;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .pdf-seq-body{padding:1rem}
+  .pdf-field{margin-bottom:.6rem}
+  .pdf-label{font-size:9px;font-family:'DM Mono',monospace;color:#666;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+  .pdf-value{font-size:12px;color:#111;line-height:1.5}
+  .pdf-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem}
+  .pdf-grid3{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.5rem;margin-bottom:.75rem}
+  .pdf-divider{border:none;border-top:1px solid #ddd;margin:.75rem 0}
+  .pdf-badge{font-size:9px;padding:2px 7px;border-radius:12px;font-family:'DM Mono',monospace;display:inline-block}
+  .pdf-img-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .pdf-img-grid img{width:120px;height:85px;object-fit:cover;border-radius:4px;border:1px solid #ddd}
+  .pdf-alta{border-left:4px solid #c0392b!important}
+  .pdf-media{border-left:4px solid #e67e22!important}
+  .pdf-baja{border-left:4px solid #27ae60!important}
+}
+.print-doc{display:none}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">DP · Desglose Visual</div>
+  <div class="topbar-sep"></div>
+  <span id="save-indicator" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:.05em"></span>
+  <div class="topbar-actions">
+    <span id="sel-count"></span>
+    <button class="btn" onclick="clearSelection()" id="btn-clear-sel" style="display:none">✕ Deseleccionar todo</button>
+    <button class="btn btn-green" onclick="openExportModal()" id="btn-export-day" style="display:none">Exportar día de rodaje</button>
+    <div class="topbar-sep" id="sep2" style="display:none"></div>
+    <button class="btn" onclick="addEpisode()">+ Episodio</button>
+    <button class="btn" onclick="addSequence()">+ Secuencia</button>
+    <button class="btn btn-accent" onclick="exportJSON()">Exportar JSON</button>
+    <button class="btn" onclick="importJSON()">Importar JSON</button>
+  </div>
+</div>
+
+<div class="layout app-ui">
+  <aside class="sidebar-eps">
+    <div class="sidebar-title">Episodios</div>
+    <div class="sidebar-list" id="ep-list"></div>
+    <div class="sidebar-add"><button class="btn" style="width:100%" onclick="addEpisode()">+ Episodio</button></div>
+  </aside>
+  <aside class="sidebar-seqs">
+    <div class="sidebar-title">Secuencias</div>
+    <div class="sidebar-list" id="seq-list"></div>
+    <div class="sidebar-add"><button class="btn" style="width:100%" onclick="addSequence()">+ Secuencia</button></div>
+  </aside>
+  <main class="main" id="main-content"></main>
+</div>
+
+<!-- PRINT DOC -->
+<div class="print-doc" id="print-doc"></div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLightboxBg(event)">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lb-img" src="" alt="">
+  <div class="lightbox-caption" id="lb-caption"></div>
+  <div class="lightbox-edit"><input id="lb-caption-input" placeholder="Añadir descripción…" oninput="updateCaption(this.value)"></div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="modal-overlay" id="export-modal">
+  <div class="modal">
+    <h3>Exportar día de rodaje</h3>
+    <p>Nombre el día de rodaje para que aparezca en el informe. Luego elige el formato.</p>
+    <input id="day-label" placeholder="Ej: Día 1 · Lunes 12 mayo · Ext. Puerto" value="">
+    <div class="modal-actions">
+      <button class="btn" onclick="closeExportModal()">Cancelar</button>
+      <button class="btn btn-accent" onclick="doExportJSON()">JSON</button>
+      <button class="btn btn-green" onclick="doExportPDF()">PDF / Imprimir</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="file-input" accept=".json" style="display:none" onchange="handleImport(event)">
+
+<script>
+const OPTICAS=['14mm','18mm','21mm','24mm','25mm','28mm','32mm','35mm','40mm','50mm','65mm','75mm','85mm','100mm','135mm','150mm','200mm','24-70mm zoom','70-200mm zoom','Macro','Anamórfico','Ojo de pez','Personalizada'];
+const INTEXTS=['INT','EXT','INT/EXT'];
+const MOMENTOS=['Día','Noche','Amanecer','Atardecer','Indeterminado'];
+const DIFS=['Baja','Media','Alta'];
+const TONOS=['Neutro','Tenso','Íntimo','Épico','Cómico','Onírico','Violento','Romántico','Misterioso'];
+const CAMARAS=['A','B','C','A+B','A+B+C'];
+const STORAGE_KEY='dp_desglose_v4';
+
+let state={currentEp:null,currentSeq:null,selection:[],episodes:[]};
+// selection = [{epId, seqId}]
+let lbCtx=null;
+
+// ── STATE ─────────────────────────────────────────────────────────────────
+function loadState(){
+  try{const raw=localStorage.getItem(STORAGE_KEY);if(raw)state=JSON.parse(raw);if(!state.episodes)state.episodes=[];if(!state.selection)state.selection=[];if(state.episodes.length===0)_addEp(1);}
+  catch(e){state={currentEp:null,currentSeq:null,selection:[],episodes:[]};_addEp(1);}
+}
+function save(){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));const el=document.getElementById('save-indicator');el.textContent='● guardado';setTimeout(()=>el.textContent='',2000);}
+  catch(e){toast('⚠ Almacenamiento lleno — exporta JSON');}
+}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function newEp(n){return{id:uid(),num:n,titulo:`Episodio ${n}`,director:'',camara:'A',lookbook:'',notas:'',images:[],sequences:[]}}
+function newSeq(n){return{id:uid(),num:String(n),nombre:`Secuencia ${n}`,loc:'',int_ext:'INT',momento:'Día',personajes:'',accion:'',tono:'Neutro',optica:'35mm',optica_custom:'',dificultad:'Media',luz:'',camara_notas:'',color:'',tecnicas:'',refs:'',images:[]}}
+function _addEp(n){const ep=newEp(n||state.episodes.length+1);state.episodes.push(ep);state.currentEp=ep.id;state.currentSeq=null;}
+function addEpisode(){_addEp(state.episodes.length+1);save();render();toast('Episodio añadido')}
+function currentEp(){return state.episodes.find(e=>e.id===state.currentEp)||null}
+function currentSeq(){const ep=currentEp();return ep?ep.sequences.find(s=>s.id===state.currentSeq)||null:null}
+function switchEp(id){state.currentEp=id;state.currentSeq=null;render();}
+function switchSeq(id){state.currentSeq=id;renderSeqList();renderMain();}
+function addSequence(){const ep=currentEp();if(!ep)return;const seq=newSeq(ep.sequences.length+1);ep.sequences.push(seq);state.currentSeq=seq.id;save();renderSeqList();renderMain();toast('Secuencia añadida');}
+function deleteSequence(id){const ep=currentEp();if(!ep)return;if(!confirm('¿Eliminar esta secuencia?'))return;ep.sequences=ep.sequences.filter(s=>s.id!==id);state.selection=state.selection.filter(s=>s.seqId!==id);state.currentSeq=ep.sequences.length?ep.sequences[ep.sequences.length-1].id:null;save();renderSeqList();renderMain();updateSelUI();}
+function deleteEpisode(id){if(!confirm('¿Eliminar este episodio con todas sus secuencias?'))return;state.selection=state.selection.filter(s=>s.epId!==id);state.episodes=state.episodes.filter(e=>e.id!==id);state.currentEp=state.episodes.length?state.episodes[0].id:null;state.currentSeq=null;save();render();updateSelUI();}
+function duplicateSeq(sid){const ep=currentEp();if(!ep)return;const seq=ep.sequences.find(s=>s.id===sid);if(!seq)return;const clone=JSON.parse(JSON.stringify(seq));clone.id=uid();clone.num=String(ep.sequences.length+1);clone.nombre=clone.nombre+' (copia)';clone.images=[];ep.sequences.push(clone);state.currentSeq=clone.id;save();renderSeqList();renderMain();}
+
+// ── SELECTION ─────────────────────────────────────────────────────────────
+function isSelected(epId,seqId){return state.selection.some(s=>s.epId===epId&&s.seqId===seqId);}
+function toggleSelect(epId,seqId,e){
+  e.stopPropagation();
+  if(isSelected(epId,seqId)){state.selection=state.selection.filter(s=>!(s.epId===epId&&s.seqId===seqId));}
+  else{state.selection.push({epId,seqId});}
+  save();renderSeqList();updateSelUI();
+}
+function clearSelection(){state.selection=[];save();renderSeqList();updateSelUI();}
+function updateSelUI(){
+  const n=state.selection.length;
+  const cnt=document.getElementById('sel-count');
+  const btnClear=document.getElementById('btn-clear-sel');
+  const btnExport=document.getElementById('btn-export-day');
+  const sep=document.getElementById('sep2');
+  if(n>0){
+    cnt.style.display='block';cnt.textContent=`${n} secuencia${n>1?'s':''} seleccionada${n>1?'s':''}`;
+    btnClear.style.display='block';btnExport.style.display='block';sep.style.display='block';
+  }else{
+    cnt.style.display='none';btnClear.style.display='none';btnExport.style.display='none';sep.style.display='none';
+  }
+}
+
+// ── IMAGES ────────────────────────────────────────────────────────────────
+function readFiles(files,cb){const arr=Array.from(files);if(!arr.length){cb([]);return;}let done=0;const res=new Array(arr.length);arr.forEach((f,i)=>{const r=new FileReader();r.onload=ev=>{res[i]={data:ev.target.result,caption:f.name.replace(/\.[^.]+$/,'')};if(++done===arr.length)cb(res);};r.readAsDataURL(f);});}
+function addImgsToEp(files){const ep=currentEp();if(!ep)return;readFiles(files,imgs=>{ep.images.push(...imgs);save();rerenderEpGallery();});}
+function addImgsToSeq(sid,files){const ep=currentEp();if(!ep)return;const seq=ep.sequences.find(s=>s.id===sid);if(!seq)return;readFiles(files,imgs=>{seq.images.push(...imgs);save();rerenderSeqGallery(sid);});}
+function delEpImg(idx){const ep=currentEp();if(!ep)return;ep.images.splice(idx,1);save();rerenderEpGallery();}
+function delSeqImg(sid,idx){const ep=currentEp();if(!ep)return;const seq=ep.sequences.find(s=>s.id===sid);if(!seq)return;seq.images.splice(idx,1);save();rerenderSeqGallery(sid);}
+function rerenderEpGallery(){const ep=currentEp();if(!ep)return;const el=document.getElementById(`gal-ep-${ep.id}`);if(el){el.outerHTML=buildGallery(ep.images,ep.id,'',`gal-ep-${ep.id}`);attachDrop(`dz-gal-ep-${ep.id}`,addImgsToEp);}}
+function rerenderSeqGallery(sid){const ep=currentEp();if(!ep)return;const seq=ep.sequences.find(s=>s.id===sid);if(!seq)return;const el=document.getElementById(`gal-seq-${sid}`);if(el){el.outerHTML=buildGallery(seq.images,ep.id,sid,`gal-seq-${sid}`);attachDrop(`dz-gal-seq-${sid}`,f=>addImgsToSeq(sid,f));}}
+
+// ── LIGHTBOX ──────────────────────────────────────────────────────────────
+function openLightbox(epId,seqId,idx){const ep=state.episodes.find(e=>e.id===epId);if(!ep)return;const imgs=seqId?ep.sequences.find(s=>s.id===seqId)?.images:ep.images;if(!imgs||!imgs[idx])return;lbCtx={epId,seqId,idx};document.getElementById('lb-img').src=imgs[idx].data;document.getElementById('lb-caption').textContent=imgs[idx].caption||'';document.getElementById('lb-caption-input').value=imgs[idx].caption||'';document.getElementById('lightbox').classList.add('open');}
+function closeLightbox(){document.getElementById('lightbox').classList.remove('open');lbCtx=null;}
+function closeLightboxBg(e){if(e.target===document.getElementById('lightbox'))closeLightbox();}
+function updateCaption(val){if(!lbCtx)return;const ep=state.episodes.find(e=>e.id===lbCtx.epId);if(!ep)return;const imgs=lbCtx.seqId?ep.sequences.find(s=>s.id===lbCtx.seqId)?.images:ep.images;if(!imgs)return;imgs[lbCtx.idx].caption=val;document.getElementById('lb-caption').textContent=val;save();}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeLightbox();closeExportModal();}});
+
+// ── DRAG & DROP ───────────────────────────────────────────────────────────
+function attachDrop(dzId,handler){const el=document.getElementById(dzId);if(!el)return;el.addEventListener('dragover',e=>{e.preventDefault();el.classList.add('drag-over');},{passive:false});el.addEventListener('dragleave',()=>el.classList.remove('drag-over'));el.addEventListener('drop',e=>{e.preventDefault();el.classList.remove('drag-over');handler(e.dataTransfer.files);});}
+
+// ── GALLERY ───────────────────────────────────────────────────────────────
+function buildGallery(images,epId,seqId,galId){
+  const dzId=`dz-${galId}`;const fileId=`fi-${galId}`;
+  const imgs=(images||[]).map((img,i)=>`<div class="img-thumb-wrap" onclick="openLightbox('${epId}','${seqId}',${i})"><img src="${img.data}" alt="${esc(img.caption)}"><button class="img-thumb-del" onclick="event.stopPropagation();${seqId?`delSeqImg('${seqId}',${i})`:`delEpImg(${i})`}">✕</button>${img.caption?`<div class="img-thumb-caption">${esc(img.caption)}</div>`:''}</div>`).join('');
+  return`<div id="${galId}"><div class="img-gallery">${imgs}</div><div class="img-drop-zone" id="${dzId}" onclick="document.getElementById('${fileId}').click()"><input type="file" id="${fileId}" accept="image/*" multiple style="display:none" onchange="${seqId?`addImgsToSeq('${seqId}',this.files)`:`addImgsToEp(this.files)`}"><span>＋ Añadir imágenes — arrastra o pulsa aquí</span></div></div>`;
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────
+function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function raw(s){return s||'—';}
+function badgeIE(v){const m={INT:'badge-int',EXT:'badge-ext','INT/EXT':'badge-intext'};return`<span class="badge ${m[v]||''}">${v}</span>`;}
+function badgeMom(v){const m={Día:'badge-dia',Noche:'badge-noche',Amanecer:'badge-amanecer',Atardecer:'badge-atardecer',Indeterminado:'badge-indet'};return`<span class="badge ${m[v]||'badge-indet'}">${v}</span>`;}
+function badgeDif(v){const m={Alta:'badge-alta',Media:'badge-media',Baja:'badge-baja'};return`<span class="badge ${m[v]||''}">${v}</span>`;}
+function difClass(v){return v==='Alta'?'alta':v==='Media'?'media':'baja';}
+function opticaLabel(s){return s.optica==='Personalizada'&&s.optica_custom?s.optica_custom:s.optica;}
+function ieClass(v){return v==='INT'?'seq-ie-int':v==='EXT'?'seq-ie-ext':'seq-ie-intext';}
+function difPillClass(v){return v==='Alta'?'seq-dif-alta':v==='Media'?'seq-dif-media':'seq-dif-baja';}
+
+// ── RENDER ────────────────────────────────────────────────────────────────
+function render(){renderEpList();renderSeqList();renderMain();}
+
+function renderEpList(){
+  document.getElementById('ep-list').innerHTML=state.episodes.map(ep=>`
+    <div class="ep-item${ep.id===state.currentEp?' active':''}" onclick="switchEp('${ep.id}')">
+      <span class="ep-num">E${String(ep.num).padStart(2,'0')}</span>
+      <span class="ep-name">${esc(ep.titulo||`Episodio ${ep.num}`)}</span>
+      <span class="ep-badge">${ep.sequences.length}</span>
+    </div>`).join('');
+}
+
+function renderSeqList(){
+  const ep=currentEp();
+  const list=document.getElementById('seq-list');
+  if(!ep){list.innerHTML=`<div class="no-ep-seqs">Selecciona un episodio</div>`;return;}
+  if(!ep.sequences.length){list.innerHTML=`<div class="no-ep-seqs">Sin secuencias</div>`;return;}
+  list.innerHTML=ep.sequences.map(seq=>{
+    const sel=isSelected(ep.id,seq.id);
+    return`<div class="seq-item${seq.id===state.currentSeq?' active':''}${sel?' selected':''}" onclick="switchSeq('${seq.id}')">
+      <div class="seq-check${sel?' checked':''}" onclick="toggleSelect('${ep.id}','${seq.id}',event)" title="Seleccionar para exportar"></div>
+      <span class="seq-num">S${seq.num}</span>
+      <div class="seq-info">
+        <div class="seq-name">${esc(seq.nombre||`Secuencia ${seq.num}`)}</div>
+        <div class="seq-meta">
+          <span class="seq-pill ${ieClass(seq.int_ext)}">${seq.int_ext}</span>
+          <span class="seq-pill ${difPillClass(seq.dificultad)}">${seq.dificultad}</span>
+          ${seq.momento!=='Día'?`<span class="seq-pill" style="background:var(--surface3);color:var(--text3)">${seq.momento}</span>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderMain(){
+  const ep=currentEp();const seq=currentSeq();
+  const main=document.getElementById('main-content');
+  if(!ep){main.innerHTML=`<div class="no-sel"><div>Selecciona o crea un episodio</div><button class="btn btn-accent" onclick="addEpisode()">+ Episodio</button></div>`;return;}
+
+  if(!seq){
+    const alta=ep.sequences.filter(s=>s.dificultad==='Alta').length;
+    const media=ep.sequences.filter(s=>s.dificultad==='Media').length;
+    const baja=ep.sequences.filter(s=>s.dificultad==='Baja').length;
+    const locs=[...new Set(ep.sequences.map(s=>s.loc).filter(Boolean))].length;
+    const intC=ep.sequences.filter(s=>s.int_ext==='INT').length;
+    const extC=ep.sequences.filter(s=>s.int_ext==='EXT').length;
+    main.innerHTML=`
+      <div class="ep-header">
+        <div class="ep-header-top">
+          <div class="ep-header-num">E${String(ep.num).padStart(2,'0')}</div>
+          <div style="flex:1"><input style="font-family:'DM Sans',sans-serif;font-size:17px;font-weight:600;background:transparent;border:none;color:var(--text);width:100%;outline:none" value="${esc(ep.titulo)}" placeholder="Título del episodio" oninput="updEp('titulo',this.value)"></div>
+          <button class="btn btn-danger" onclick="deleteEpisode('${ep.id}')">Eliminar episodio</button>
+        </div>
+        <div class="ep-meta-grid">
+          <div class="meta-field"><label>Director/a</label><input value="${esc(ep.director)}" placeholder="—" oninput="updEp('director',this.value)"></div>
+          <div class="meta-field"><label>Cámara principal</label><select onchange="updEp('camara',this.value)">${CAMARAS.map(o=>`<option${o===ep.camara?' selected':''}>${o}</option>`).join('')}</select></div>
+          <div class="meta-field"><label>Lookbook / refs</label><input value="${esc(ep.lookbook)}" placeholder="Link o nombre" oninput="updEp('lookbook',this.value)"></div>
+          <div class="meta-field"><label>Notas generales</label><input value="${esc(ep.notas)}" placeholder="Arco visual, intenciones…" oninput="updEp('notas',this.value)"></div>
+        </div>
+        <div class="img-section-label">Moodboard del episodio</div>
+        ${buildGallery(ep.images,ep.id,'',`gal-ep-${ep.id}`)}
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="metric-val">${ep.sequences.length}</div><div class="metric-lbl">Secuencias</div></div>
+        <div class="metric"><div class="metric-val">${locs}</div><div class="metric-lbl">Localizaciones</div></div>
+        <div class="metric"><div class="metric-val">${intC}</div><div class="metric-lbl">INT</div></div>
+        <div class="metric"><div class="metric-val">${extC}</div><div class="metric-lbl">EXT</div></div>
+        <div class="metric"><div class="metric-val alta">${alta}</div><div class="metric-lbl">Dif. Alta</div></div>
+        <div class="metric"><div class="metric-val media">${media}</div><div class="metric-lbl">Dif. Media</div></div>
+        <div class="metric"><div class="metric-val baja">${baja}</div><div class="metric-lbl">Dif. Baja</div></div>
+      </div>
+      ${ep.sequences.length===0?'<div class="empty">Sin secuencias · Pulsa "+ Secuencia" para empezar</div>':`<div style="color:var(--text3);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.05em;padding:.5rem 0">← Selecciona una secuencia para editarla · Marca el checkbox para incluirla en el día de rodaje</div>`}
+      <div style="margin-top:12px"><button class="btn btn-accent" onclick="addSequence()">+ Secuencia</button></div>`;
+    setTimeout(()=>attachDrop(`dz-gal-ep-${ep.id}`,addImgsToEp),60);
+    return;
+  }
+
+  const isCustom=seq.optica==='Personalizada';
+  main.innerHTML=`
+    <div class="seq-card">
+      <div class="seq-card-topbar ${difClass(seq.dificultad)}">
+        <span class="seq-card-num">S${seq.num}</span>
+        ${badgeIE(seq.int_ext)}${badgeMom(seq.momento)}
+        <span class="badge badge-optica">${esc(opticaLabel(seq))}</span>
+        ${badgeDif(seq.dificultad)}
+        <span class="seq-card-title">${esc(seq.nombre||`Secuencia ${seq.num}`)}</span>
+        <button class="btn btn-danger" style="margin-left:auto" onclick="deleteSequence('${seq.id}')">Eliminar</button>
+      </div>
+      <div class="seq-body">
+        <div class="grid2" style="margin-bottom:10px">
+          <div class="field"><label>Nombre de la secuencia</label><input value="${esc(seq.nombre)}" placeholder="Ej: Huida del banco" oninput="updSeq('nombre',this.value)"></div>
+          <div class="field"><label>Localización</label><input value="${esc(seq.loc)}" placeholder="Nombre del espacio" oninput="updSeq('loc',this.value)"></div>
+        </div>
+        <div class="grid4">
+          <div class="field"><label>INT / EXT</label><select onchange="updSeq('int_ext',this.value)">${INTEXTS.map(o=>`<option${o===seq.int_ext?' selected':''}>${o}</option>`).join('')}</select></div>
+          <div class="field"><label>Momento</label><select onchange="updSeq('momento',this.value)">${MOMENTOS.map(o=>`<option${o===seq.momento?' selected':''}>${o}</option>`).join('')}</select></div>
+          <div class="field"><label>Tono dramático</label><select onchange="updSeq('tono',this.value)">${TONOS.map(o=>`<option${o===seq.tono?' selected':''}>${o}</option>`).join('')}</select></div>
+          <div class="field"><label>Dificultad técnica</label><select onchange="updSeq('dificultad',this.value)">${DIFS.map(o=>`<option${o===seq.dificultad?' selected':''}>${o}</option>`).join('')}</select></div>
+        </div>
+        <div class="field" style="margin-bottom:10px">
+          <label>Óptica</label>
+          <div style="display:flex;gap:8px">
+            <select style="width:${isCustom?'50%':'100%'}" onchange="updSeqOptica(this.value)">${OPTICAS.map(o=>`<option${o===seq.optica?' selected':''}>${o}</option>`).join('')}</select>
+            ${isCustom?`<input style="flex:1" placeholder="Ej: 50mm T1.3 Zeiss" value="${esc(seq.optica_custom)}" oninput="updSeq('optica_custom',this.value)">`:''} 
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:10px"><label>Personajes</label><input value="${esc(seq.personajes)}" placeholder="Ej: Ana, Marcos, Vecina" oninput="updSeq('personajes',this.value)"></div>
+        <div class="field" style="margin-bottom:10px"><label>Acción dramática — lo que pasa</label><textarea oninput="updSeq('accion',this.value)">${esc(seq.accion)}</textarea></div>
+        <hr class="divider">
+        <div class="section-label">— Fotografía</div>
+        <div class="grid2">
+          <div class="field"><label>Propuesta de luz</label><textarea oninput="updSeq('luz',this.value)">${esc(seq.luz)}</textarea></div>
+          <div class="field"><label>Color / Paleta</label><textarea oninput="updSeq('color',this.value)">${esc(seq.color)}</textarea></div>
+        </div>
+        <div class="field" style="margin-bottom:10px"><label>Cámara / Movimiento</label><textarea oninput="updSeq('camara_notas',this.value)">${esc(seq.camara_notas)}</textarea></div>
+        <div class="field" style="margin-bottom:10px"><label>Notas técnicas</label><textarea oninput="updSeq('tecnicas',this.value)">${esc(seq.tecnicas)}</textarea></div>
+        <div class="field" style="margin-bottom:12px"><label>Referencias visuales</label><input value="${esc(seq.refs)}" placeholder="Películas, fotógrafos, pintores…" oninput="updSeq('refs',this.value)"></div>
+        <hr class="divider">
+        <div class="section-label">— Imágenes de secuencia</div>
+        ${buildGallery(seq.images,ep.id,seq.id,`gal-seq-${seq.id}`)}
+        <div class="seq-actions">
+          <button class="btn" onclick="duplicateSeq('${seq.id}')">Duplicar secuencia</button>
+          <button class="btn btn-danger" onclick="deleteSequence('${seq.id}')">Eliminar secuencia</button>
+        </div>
+      </div>
+    </div>`;
+  setTimeout(()=>attachDrop(`dz-gal-seq-${seq.id}`,f=>addImgsToSeq(seq.id,f)),60);
+}
+
+// ── UPDATES ───────────────────────────────────────────────────────────────
+function updEp(key,val){const ep=currentEp();if(!ep)return;ep[key]=val;save();if(key==='titulo')renderEpList();}
+function updSeq(key,val){const ep=currentEp();if(!ep)return;const seq=currentSeq();if(!seq)return;seq[key]=val;save();if(['nombre','int_ext','momento','dificultad','loc'].includes(key)){renderSeqList();refreshSeqTopbar(seq);}}
+function updSeqOptica(val){const seq=currentSeq();if(!seq)return;seq.optica=val;save();renderMain();}
+function refreshSeqTopbar(seq){const tb=document.querySelector('.seq-card-topbar');if(!tb)return;tb.className=`seq-card-topbar ${difClass(seq.dificultad)}`;const badges=tb.querySelectorAll('.badge');const ieMap={INT:'badge-int',EXT:'badge-ext','INT/EXT':'badge-intext'};const momMap={Día:'badge-dia',Noche:'badge-noche',Amanecer:'badge-amanecer',Atardecer:'badge-atardecer',Indeterminado:'badge-indet'};const difMap={Alta:'badge-alta',Media:'badge-media',Baja:'badge-baja'};if(badges[0]){badges[0].className='badge '+(ieMap[seq.int_ext]||'');badges[0].textContent=seq.int_ext;}if(badges[1]){badges[1].className='badge '+(momMap[seq.momento]||'badge-indet');badges[1].textContent=seq.momento;}if(badges[2]){badges[2].className='badge badge-optica';badges[2].textContent=opticaLabel(seq);}if(badges[3]){badges[3].className='badge '+(difMap[seq.dificultad]||'');badges[3].textContent=seq.dificultad;}const title=tb.querySelector('.seq-card-title');if(title)title.textContent=seq.nombre||`Secuencia ${seq.num}`;}
+
+// ── EXPORT MODAL ──────────────────────────────────────────────────────────
+function openExportModal(){if(!state.selection.length){toast('Selecciona al menos una secuencia');return;}document.getElementById('export-modal').classList.add('open');}
+function closeExportModal(){document.getElementById('export-modal').classList.remove('open');}
+
+function getSelectedData(){
+  const label=document.getElementById('day-label').value||'Día de rodaje';
+  const sequences=state.selection.map(sel=>{
+    const ep=state.episodes.find(e=>e.id===sel.epId);if(!ep)return null;
+    const seq=ep.sequences.find(s=>s.id===sel.seqId);if(!seq)return null;
+    return{episodio:ep.titulo||`Episodio ${ep.num}`,epNum:ep.num,...seq};
+  }).filter(Boolean);
+  return{label,date:new Date().toLocaleDateString('es-ES'),sequences};
+}
+
+function doExportJSON(){
+  const data=getSelectedData();
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`dia_rodaje_${data.label.replace(/[^a-z0-9]/gi,'_').toLowerCase()}.json`;a.click();
+  URL.revokeObjectURL(url);closeExportModal();toast('JSON exportado ✓');
+}
+
+function doExportPDF(){
+  const data=getSelectedData();
+  const today=new Date().toLocaleDateString('es-ES',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  const difColors={Alta:{bg:'#fdecea',txt:'#c0392b',border:'#c0392b'},Media:{bg:'#fef3e2',txt:'#e67e22',border:'#e67e22'},Baja:{bg:'#eafaf1',txt:'#27ae60',border:'#27ae60'}};
+  const ieColors={INT:{bg:'#ebf5fb',txt:'#1a5276'},EXT:{bg:'#eafaf1',txt:'#1a5c2e'},'INT/EXT':{bg:'#f4ecf7',txt:'#6c3483'}};
+  const momColors={Día:{bg:'#fef9e7',txt:'#7d6608'},Noche:{bg:'#eaecee',txt:'#1c2833'},Amanecer:{bg:'#fdf2e9',txt:'#784212'},Atardecer:{bg:'#fdf0f6',txt:'#6c1643'},Indeterminado:{bg:'#f2f3f4',txt:'#566573'}};
+
+  function pBadge(txt,bg,color){return`<span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:12px;background:${bg};color:${color};font-family:'DM Mono',monospace;letter-spacing:.04em;margin-right:4px">${txt}</span>`;}
+  function pField(label,val){if(!val||val==='—')return'';return`<div class="pdf-field"><div class="pdf-label">${label}</div><div class="pdf-value">${val}</div></div>`;}
+
+  const seqsHtml=data.sequences.map((seq,i)=>{
+    const dif=difColors[seq.dificultad]||difColors.Media;
+    const ie=ieColors[seq.int_ext]||ieColors.INT;
+    const mom=momColors[seq.momento]||momColors.Día;
+    const imgs=(seq.images||[]).map(img=>`<img src="${img.data}" alt="${img.caption||''}" style="width:130px;height:92px;object-fit:cover;border-radius:4px;border:1px solid #ddd">`).join('');
+
+    return`<div style="margin-bottom:1.5rem;border:1px solid #ddd;border-radius:8px;overflow:hidden;border-left:4px solid ${dif.border};page-break-inside:avoid">
+      <div style="padding:.75rem 1rem;background:#111;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-family:'DM Mono',monospace;font-size:12px;color:#c8a96e;min-width:24px">S${seq.num}</span>
+        ${pBadge(seq.int_ext,ie.bg,ie.txt)}
+        ${pBadge(seq.momento,mom.bg,mom.txt)}
+        ${pBadge(opticaLabel(seq),'#1a1030','#9080d0')}
+        ${pBadge(seq.dificultad,dif.bg,dif.txt)}
+        <span style="font-size:13px;font-weight:600;color:#fff;flex:1">${seq.nombre||`Secuencia ${seq.num}`}</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:#888">${seq.episodio}</span>
+      </div>
+      <div style="padding:1rem">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
+          ${pField('Localización',seq.loc)}
+          ${pField('Personajes',seq.personajes)}
+        </div>
+        ${pField('Acción dramática',seq.accion)}
+        ${seq.luz||seq.color||seq.camara_notas?`<hr style="border:none;border-top:1px solid #eee;margin:.75rem 0">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;color:#c8a96e;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.5rem">— Fotografía</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.5rem">
+          ${pField('Propuesta de luz',seq.luz)}
+          ${pField('Color / Paleta',seq.color)}
+        </div>
+        ${pField('Cámara / Movimiento',seq.camara_notas)}`:''}
+        ${seq.tecnicas?`${pField('Notas técnicas',seq.tecnicas)}`:''}
+        ${seq.refs?`${pField('Referencias visuales',seq.refs)}`:''}
+        ${imgs?`<div style="margin-top:.75rem;display:flex;flex-wrap:wrap;gap:6px">${imgs}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'DM Sans',sans-serif;color:#111;background:#fff;padding:2rem;font-size:13px}@media print{body{padding:1rem}}</style>
+  </head><body>
+  <div style="margin-bottom:2rem;padding-bottom:1.5rem;border-bottom:2px solid #111">
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:#888;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.5rem">Desglose Visual · Dirección de Fotografía</div>
+    <div style="font-size:24px;font-weight:600;color:#111;margin-bottom:.25rem">${data.label}</div>
+    <div style="font-family:'DM Mono',monospace;font-size:11px;color:#666">${today} · ${data.sequences.length} secuencia${data.sequences.length!==1?'s':''}</div>
+    <div style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap">
+      ${data.sequences.map(s=>`<span style="font-family:'DM Mono',monospace;font-size:10px;padding:2px 8px;border-radius:12px;background:#f2f2f2;color:#444">S${s.num} ${s.nombre||''} · ${s.episodio}</span>`).join('')}
+    </div>
+  </div>
+  ${seqsHtml}
+  <div style="margin-top:2rem;padding-top:1rem;border-top:1px solid #eee;font-family:'DM Mono',monospace;font-size:10px;color:#aaa;text-align:center">Generado con DP · Desglose Visual</div>
+  </body></html>`;
+
+  const win=window.open('','_blank');
+  win.document.write(html);
+  win.document.close();
+  win.onload=()=>{win.focus();win.print();};
+  closeExportModal();
+}
+
+// ── FULL JSON EXPORT/IMPORT ───────────────────────────────────────────────
+function exportJSON(){const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='desglose_visual.json';a.click();URL.revokeObjectURL(url);toast('JSON exportado ✓');}
+function importJSON(){document.getElementById('file-input').click();}
+function handleImport(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const imp=JSON.parse(ev.target.result);if(imp.episodes){state=imp;if(!state.selection)state.selection=[];save();render();updateSelUI();toast('Datos importados ✓');}else toast('Formato no reconocido');}catch(err){toast('Error al leer el archivo');}};reader.readAsText(file);e.target.value='';}
+
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+loadState();render();updateSelUI();
+
+// ── SERVICE WORKER ────────────────────────────────────────────────────────
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
