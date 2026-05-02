@@ -315,6 +315,15 @@ body.light .btn-green{background:#d0f0d8;color:#1a5a20;border-color:#80c090}
 /* POOL FOOTER */
 /* SEARCH */
 .search-wrap{padding:.4rem .5rem;border-bottom:1px solid var(--b1);flex-shrink:0;display:flex;flex-direction:column;gap:4px}
+/* COLLAPSIBLE POOL SECTIONS */
+.psec.collapsed .plist,.psec.collapsed .search-wrap,.psec.collapsed .search-results-label{display:none}
+.psec.collapsed{max-height:none!important;flex-shrink:0}
+.pcollapse{font-family:'DM Mono',monospace;font-size:11px;color:var(--txt3);background:none;border:none;cursor:pointer;padding:2px 4px;line-height:1;transition:color .15s;flex-shrink:0}
+.pcollapse:hover{color:var(--txt2)}
+/* GLOBAL SEARCH */
+.global-search{padding:.5rem;border-bottom:1px solid var(--b1);flex-shrink:0;display:flex;flex-direction:column;gap:4px}
+.global-search .search-input-row{display:flex;align-items:center;gap:5px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--r);padding:4px 8px;transition:border-color .15s}
+.global-search .search-input-row:focus-within{border-color:var(--gold2)}
 .search-input-row{display:flex;align-items:center;gap:5px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--r);padding:4px 8px;transition:border-color .15s}
 .search-input-row:focus-within{border-color:var(--gold2)}
 .search-icon{font-size:11px;color:var(--txt3);flex-shrink:0}
@@ -376,26 +385,42 @@ body.light .btn-green{background:#d0f0d8;color:#1a5a20;border-color:#80c090}
       <div class="pool-tab" id="tab-carpetas" onclick="switchPoolTab('carpetas')">📁 Carpetas</div>
     </div>
     <div class="pool-panel on" id="panel-nav">
-      <div class="psec" style="max-height:32%">
-        <div class="phead"><span class="ptitle">Proyectos</span><button class="btn bico" onclick="addProject()">＋</button></div>
+      <!-- GLOBAL SEARCH — top of pool -->
+      <div class="global-search">
+        <div class="search-input-row">
+          <span class="search-icon">⌕</span>
+          <input class="search-input" id="search-input" placeholder="Buscar en el proyecto…" oninput="onSearchInput(this.value)" autocomplete="off" autocorrect="off" spellcheck="false">
+          <button class="search-clear" id="search-clear" onclick="clearSearch()" style="display:none">✕</button>
+        </div>
+        <div class="search-scope">
+          <button class="search-scope-btn on" id="scope-ep" onclick="setScope('ep')">Este episodio</button>
+          <button class="search-scope-btn" id="scope-proj" onclick="setScope('proj')">Todo el proyecto</button>
+        </div>
+      </div>
+      <!-- PROYECTOS -->
+      <div class="psec" id="psec-proj" style="max-height:32%">
+        <div class="phead">
+          <span class="ptitle">Proyectos</span>
+          <button class="btn bico" onclick="addProject()">＋</button>
+          <button class="pcollapse" onclick="togglePsec('proj')" id="pcol-proj" title="Colapsar">▲</button>
+        </div>
         <div class="plist" id="plist-proj"></div>
       </div>
-      <div class="psec" style="max-height:26%">
-        <div class="phead"><span class="ptitle">Episodios</span><button class="btn bico" onclick="addEpisode()">＋</button></div>
+      <!-- EPISODIOS -->
+      <div class="psec" id="psec-ep" style="max-height:26%">
+        <div class="phead">
+          <span class="ptitle">Episodios</span>
+          <button class="btn bico" onclick="addEpisode()">＋</button>
+          <button class="pcollapse" onclick="togglePsec('ep')" id="pcol-ep" title="Colapsar">▲</button>
+        </div>
         <div class="plist" id="plist-ep"></div>
       </div>
-      <div class="psec flex1">
-        <div class="phead"><span class="ptitle">Secuencias</span><button class="btn bico" onclick="addSequence()">＋</button></div>
-        <div class="search-wrap">
-          <div class="search-input-row">
-            <span class="search-icon">⌕</span>
-            <input class="search-input" id="search-input" placeholder="Buscar secuencias…" oninput="onSearchInput(this.value)" autocomplete="off" autocorrect="off" spellcheck="false">
-            <button class="search-clear" id="search-clear" onclick="clearSearch()" style="display:none">✕</button>
-          </div>
-          <div class="search-scope">
-            <button class="search-scope-btn on" id="scope-ep" onclick="setScope('ep')">Este episodio</button>
-            <button class="search-scope-btn" id="scope-proj" onclick="setScope('proj')">Todo el proyecto</button>
-          </div>
+      <!-- SECUENCIAS -->
+      <div class="psec flex1" id="psec-seq">
+        <div class="phead">
+          <span class="ptitle">Secuencias</span>
+          <button class="btn bico" onclick="addSequence()">＋</button>
+          <button class="pcollapse" onclick="togglePsec('seq')" id="pcol-seq" title="Colapsar">▲</button>
         </div>
         <div id="search-results-label" style="display:none" class="search-results-label"></div>
         <div class="plist" id="plist-seq"></div>
@@ -494,7 +519,7 @@ const TONOS=['Neutro','Tenso','Íntimo','Épico','Cómico','Onírico','Violento'
 const DEFAULT_SECS=['refs','camaras','luz_planta','cam_planta','foto','notas'];
 const KEY='vb5';
 
-let S={currentProj:null,currentEp:null,currentSeq:null,currentCarpetaSeq:null,sel:[],poolOn:true,lightMode:false,poolTab:'nav',currentCarpeta:null,carpetas:[],projects:[]};
+let S={currentProj:null,currentEp:null,currentSeq:null,currentCarpetaSeq:null,sel:[],poolOn:true,lightMode:false,poolTab:'nav',currentCarpeta:null,carpetas:[],collapsedSecs:{},projects:[]};
 let lbCtx=null;let nbSeqId=null;
 
 // ── STATE ──────────────────────────────────────────────────────────────────
@@ -504,7 +529,7 @@ function load(){
     if(r)S=JSON.parse(r);
     if(!S.projects)S.projects=[];
     if(!S.sel)S.sel=[];
-    if(!S.carpetas)S.carpetas=[];
+    if(!S.carpetas)S.carpetas=[];if(!S.collapsedSecs)S.collapsedSecs={};
     if(S.poolOn===undefined)S.poolOn=true;
     if(!S.poolTab)S.poolTab='nav';
     // migrate old section orders to new default
@@ -513,7 +538,7 @@ function load(){
     })));
     if(!S.projects.length)_addProj('Mi Proyecto');
   }catch(e){
-    S={currentProj:null,currentEp:null,currentSeq:null,currentCarpetaSeq:null,sel:[],poolOn:true,lightMode:false,poolTab:'nav',currentCarpeta:null,carpetas:[],projects:[]};
+    S={currentProj:null,currentEp:null,currentSeq:null,currentCarpetaSeq:null,sel:[],poolOn:true,lightMode:false,poolTab:'nav',currentCarpeta:null,carpetas:[],collapsedSecs:{},projects:[]};
     _addProj('Mi Proyecto');
   }
   if(S.lightMode)document.body.classList.add('light');
@@ -584,6 +609,25 @@ function swCarpeta(id){S.currentCarpeta=id;S.currentCarpetaSeq=null;renderPool()
 function delCarpeta(id){if(!confirm('¿Eliminar carpeta?'))return;S.carpetas=S.carpetas.filter(c=>c.id!==id);if(S.currentCarpeta===id){S.currentCarpeta=null;S.currentCarpetaSeq=null;}save();renderPool();}
 
 // POOL TOGGLE & TABS
+function togglePsec(key){
+  if(!S.collapsedSecs)S.collapsedSecs={};
+  S.collapsedSecs[key]=!S.collapsedSecs[key];
+  save();applyCollapsedSecs();
+}
+function applyCollapsedSecs(){
+  ['proj','ep','seq'].forEach(key=>{
+    const sec=document.getElementById('psec-'+key);
+    const btn=document.getElementById('pcol-'+key);
+    if(!sec||!btn)return;
+    const collapsed=!!(S.collapsedSecs&&S.collapsedSecs[key]);
+    sec.classList.toggle('collapsed',collapsed);
+    // for seq section, also toggle flex1
+    if(key==='seq'){
+      sec.classList.toggle('flex1',!collapsed);
+    }
+    btn.textContent=collapsed?'▼':'▲';
+  });
+}
 function togglePool(){S.poolOn=!S.poolOn;save();applyPool();}
 function applyPool(){
   const pool=document.getElementById('pool');const tog=document.getElementById('ptoggle');
@@ -758,8 +802,8 @@ function spMom(v){
 function scrRef(ep,seq){return`${seq.int_ext||'INT'}.${(seq.loc||'LOC').toUpperCase().replace(/\s+/g,'_')}.${seq.num||'1'}`;}
 
 // ── RENDER ────────────────────────────────────────────────────────────────
-function render(){applyPool();document.body.classList.toggle('light',!!S.lightMode);renderPool();renderMain();updateSelUI();}
-function renderPool(){renderProjs();renderEps();renderSeqs();renderCarpetas();const p=cProj();document.getElementById('proj-lbl').textContent=p?p.name:'—';document.getElementById('tab-nav').classList.toggle('on',S.poolTab==='nav');document.getElementById('tab-carpetas').classList.toggle('on',S.poolTab==='carpetas');document.getElementById('panel-nav').classList.toggle('on',S.poolTab==='nav');document.getElementById('panel-carpetas').classList.toggle('on',S.poolTab==='carpetas');}
+function render(){applyPool();document.body.classList.toggle('light',!!S.lightMode);renderPool();renderMain();updateSelUI();applyCollapsedSecs();}
+function renderPool(){renderProjs();renderEps();renderSeqs();renderCarpetas();setTimeout(applyCollapsedSecs,10);const p=cProj();document.getElementById('proj-lbl').textContent=p?p.name:'—';document.getElementById('tab-nav').classList.toggle('on',S.poolTab==='nav');document.getElementById('tab-carpetas').classList.toggle('on',S.poolTab==='carpetas');document.getElementById('panel-nav').classList.toggle('on',S.poolTab==='nav');document.getElementById('panel-carpetas').classList.toggle('on',S.poolTab==='carpetas');}
 
 function renderProjs(){document.getElementById('plist-proj').innerHTML=S.projects.map(p=>`<div class="pitem${p.id===S.currentProj?' on':''}" onclick="swProj('${p.id}')"><div class="pcol" style="background:${p.color||'var(--gold)'}"></div><span class="pn">${esc(p.name)}</span></div>`).join('')||'<div class="phint">Sin proyectos</div>';}
 function renderEps(){const p=cProj();if(!p){document.getElementById('plist-ep').innerHTML='<div class="phint">Selecciona un proyecto</div>';return;}document.getElementById('plist-ep').innerHTML=p.episodes.map(ep=>`<div class="pitem${ep.id===S.currentEp?' on':''}" onclick="swEp('${ep.id}')"><span class="pnum">E${String(ep.num).padStart(2,'0')}</span><span class="pn">${esc(ep.titulo||`Episodio ${ep.num}`)}</span><span class="pbadge">${ep.sequences.length}</span></div>`).join('')||'<div class="phint">Sin episodios</div>';}
@@ -865,11 +909,18 @@ function renderCarpetas(){
   seqList.innerHTML=carpeta.refs.map(ref=>{
     const r=findSeqById(ref.seqId);if(!r)return'';
     const sky=getSky(r.seq.skyColor||'');
-    return`<div class="carpeta-seq${r.seq.id===activeCarpetaSeqId?' on':''}" onclick="swCarpetaSeq('${r.proj.id}','${r.ep.id}','${r.seq.id}')">
-      <div class="pcol" style="${sky.bg?'background:'+sky.bg:'background:var(--b2)'}"></div>
-      <span class="carpeta-seq-num">S${r.seq.num}</span>
-      <span class="carpeta-seq-name">${esc(r.seq.nombre)}</span>
-      <span class="carpeta-ep-lbl">E${String(r.ep.num).padStart(2,'0')}</span>
+    const sel=isSel(r.ep.id,r.seq.id);
+    return`<div class="pitem${r.seq.id===activeCarpetaSeqId?' seq-on':''}${r.seq.locked?' locked-item':''}" onclick="swCarpetaSeq('${r.proj.id}','${r.ep.id}','${r.seq.id}')">
+      ${sky.bg?`<div class="pitem-sky" style="background:${sky.bg}"></div>`:''}
+      <div class="pcheck${sel?' on':''}" onclick="event.stopPropagation();togSel('${r.ep.id}','${r.seq.id}',event)"></div>
+      <span class="pnum" style="color:var(--gold2)">S${r.seq.num}</span>
+      <div style="flex:1;overflow:hidden">
+        <div class="pn">${esc(r.seq.nombre||'Secuencia')}</div>
+        <div class="spills">
+          <span class="sp" style="background:rgba(200,169,110,.15);color:var(--gold2)">E${String(r.ep.num).padStart(2,'0')}</span>
+          ${spIE(r.seq.int_ext)}${spMom(r.seq.momento)}${spDif(r.seq.dificultad)}${r.seq.locked?'<span class="sp-lock">[L]</span>':''}
+        </div>
+      </div>
     </div>`;
   }).join('')||'<div class="phint">Sin secuencias</div>';
 }
@@ -1076,7 +1127,7 @@ function handleImport(e){
   r.onload=ev=>{
     try{
       const imp=JSON.parse(ev.target.result);
-      if(imp.projects){S=imp;if(!S.sel)S.sel=[];if(!S.carpetas)S.carpetas=[];save();render();updateSelUI();toast('Importado ✓');}
+      if(imp.projects){S=imp;if(!S.sel)S.sel=[];if(!S.carpetas)S.carpetas=[];if(!S.collapsedSecs)S.collapsedSecs={};save();render();updateSelUI();toast('Importado ✓');}
       else toast('Formato no reconocido');
     }catch(err){toast('Error al leer el archivo');}
   };
@@ -1107,7 +1158,7 @@ function iCloudLoad(){
     r.onload=ev=>{
       try{
         const imp=JSON.parse(ev.target.result);
-        if(imp.projects){S=imp;if(!S.sel)S.sel=[];if(!S.carpetas)S.carpetas=[];save();render();updateSelUI();toast('☁️ Cargado desde iCloud ✓');}
+        if(imp.projects){S=imp;if(!S.sel)S.sel=[];if(!S.carpetas)S.carpetas=[];if(!S.collapsedSecs)S.collapsedSecs={};save();render();updateSelUI();toast('☁️ Cargado desde iCloud ✓');}
         else toast('Archivo no reconocido');
       }catch(err){toast('Error al leer el archivo');}
     };
