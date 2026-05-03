@@ -607,6 +607,13 @@ function createCarpeta(){
 }
 function swCarpeta(id){S.currentCarpeta=id;S.currentCarpetaSeq=null;renderPool();}
 function delCarpeta(id){if(!confirm('¿Eliminar carpeta?'))return;S.carpetas=S.carpetas.filter(c=>c.id!==id);if(S.currentCarpeta===id){S.currentCarpeta=null;S.currentCarpetaSeq=null;}save();renderPool();}
+function removeFromCarpeta(carpetaId,seqId,e){
+  e.stopPropagation();
+  const carpeta=S.carpetas.find(c=>c.id===carpetaId);if(!carpeta)return;
+  carpeta.refs=carpeta.refs.filter(r=>r.seqId!==seqId);
+  if(S.currentCarpetaSeq?.seqId===seqId)S.currentCarpetaSeq=null;
+  save();renderPool();
+}
 
 // POOL TOGGLE & TABS
 function togglePsec(key){
@@ -921,6 +928,7 @@ function renderCarpetas(){
           ${spIE(r.seq.int_ext)}${spMom(r.seq.momento)}${spDif(r.seq.dificultad)}${r.seq.locked?'<span class="sp-lock">[L]</span>':''}
         </div>
       </div>
+      <button class="pcollapse" style="font-size:10px;opacity:.5" onclick="removeFromCarpeta('${carpeta.id}','${r.seq.id}',event)" title="Quitar de la carpeta">✕</button>
     </div>`;
   }).join('')||'<div class="phint">Sin secuencias</div>';
 }
