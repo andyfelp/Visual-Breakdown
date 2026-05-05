@@ -396,6 +396,10 @@ body.light .btn-green{background:#d0f0d8;color:#1a5a20;border-color:#80c090}
 .pitem.ws-working,.pitem.ws-working:hover{background:#1e1e1e}
 .pitem.ws-ready,.pitem.ws-ready:hover{background:#131313}
 .pitem.ws-done,.pitem.ws-done:hover{background:#111}
+.pitem.ws-clave,.pitem.ws-clave:hover{background:#0d2010}
+.pitem.ws-clave .pn{color:#6abf6a}
+.pitem.ws-clave .pnum{color:#4a9a4a!important}
+.pitem.ws-clave.on,.pitem.ws-clave.seq-on{background:#122816}
 .pitem.ws-done .pn{color:var(--txt3);position:relative}
 .pitem.ws-done .pn::after{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:#c05050;opacity:.75}
 .pitem.ws-pending.on,.pitem.ws-pending.seq-on{background:#3a3a3a}
@@ -517,7 +521,11 @@ body.light .btn-green{background:#d0f0d8;color:#1a5a20;border-color:#80c090}
 <div class="nb-modal" id="nb-modal">
   <div class="nb-topbar">
     <div class="nb-title" id="nb-title">Notas</div>
-    <button class="btn" onclick="closeNotebook()">Cerrar</button>
+    <div style="display:flex;gap:4px;align-items:center">
+      <button class="undo-btn" onclick="nbFontSize(-1)" title="Reducir fuente" style="width:26px;height:26px;font-size:13px;font-family:'DM Mono',monospace">A-</button>
+      <button class="undo-btn" onclick="nbFontSize(1)" title="Aumentar fuente" style="width:26px;height:26px;font-size:13px;font-family:'DM Mono',monospace">A+</button>
+    </div>
+    <button class="btn" style="margin-left:.5rem" onclick="closeNotebook()">Cerrar</button>
   </div>
   <div class="nb-area">
     <div class="nb-paper">
@@ -762,13 +770,41 @@ function closeCarpetaModal(){document.getElementById('carpeta-modal').classList.
 function createCarpeta(){
   const name=document.getElementById('carpeta-name-input').value.trim();
   if(!name){toast('Pon un nombre');return;}
-  const carpeta={id:uid(),name,refs:S.sel.map(s=>({projId:s.projId,epId:s.epId,seqId:s.seqId}))};
+  const rawRefs=S.sel.map(s=>({projId:s.projId,epId:s.epId,seqId:s.seqId}));
+  rawRefs.sort((a,b)=>{const ra=findSeqById(a.seqId);const rb=findSeqById(b.seqId);if(!ra||!rb)return 0;return parseFloat(ra.seq.num)-parseFloat(rb.seq.num);});
+  const carpeta={id:uid(),name,refs:rawRefs};
   S.carpetas.push(carpeta);S.currentCarpeta=carpeta.id;
   document.getElementById('carpeta-name-input').value='';
   save();closeCarpetaModal();switchPoolTab('carpetas');renderPool();toast('Carpeta creada ✓');
 }
 function swCarpeta(id){S.currentCarpeta=id;S.currentCarpetaSeq=null;renderPool();}
 function delCarpeta(id){if(!confirm('¿Eliminar carpeta?'))return;S.carpetas=S.carpetas.filter(c=>c.id!==id);if(S.currentCarpeta===id){S.currentCarpeta=null;S.currentCarpetaSeq=null;}save();renderPool();}
+function moveCarpetaRef(carpetaId,seqId,dir){
+  const carpeta=S.carpetas.find(c=>c.id===carpetaId);if(!carpeta)return;
+  const i=carpeta.refs.findIndex(r=>r.seqId===seqId);if(i<0)return;
+  const j=i+dir;if(j<0||j>=carpeta.refs.length)return;
+  [carpeta.refs[i],carpeta.refs[j]]=[carpeta.refs[j],carpeta.refs[i]];
+  save();renderPool();
+}
+function addSelToCarpeta(carpetaId){
+  const carpeta=S.carpetas.find(c=>c.id===carpetaId);if(!carpeta)return;
+  const p=cProj();
+  let added=0;
+  S.sel.forEach(sel=>{
+    // avoid duplicates
+    if(!carpeta.refs.find(r=>r.seqId===sel.seqId)){
+      carpeta.refs.push({projId:sel.projId||p?.id||'',epId:sel.epId,seqId:sel.seqId});
+      added++;
+    }
+  });
+  // sort by sequence num
+  carpeta.refs.sort((a,b)=>{
+    const ra=findSeqById(a.seqId);const rb=findSeqById(b.seqId);
+    if(!ra||!rb)return 0;
+    return parseFloat(ra.seq.num)-parseFloat(rb.seq.num);
+  });
+  save();renderPool();toast(`${added} secuencia${added!==1?'s':''} añadida${added!==1?'s':''} ✓`);
+}
 function removeFromCarpeta(carpetaId,seqId,e){
   e.stopPropagation();
   const carpeta=S.carpetas.find(c=>c.id===carpetaId);if(!carpeta)return;
@@ -906,6 +942,12 @@ function openNotebook(seqId){
   setTimeout(()=>{if(!r.seq.locked)document.getElementById('nb-textarea').focus();},100);
 }
 function closeNotebook(){document.getElementById('nb-modal').classList.remove('open');renderMain();}
+let nbFontSz=17;
+function nbFontSize(dir){
+  nbFontSz=Math.max(12,Math.min(28,nbFontSz+dir*2));
+  const ta=document.getElementById('nb-textarea');
+  if(ta)ta.style.fontSize=nbFontSz+'px';
+}
 function saveNbText(){
   if(!nbSeqId)return;
   const r=findSeqById(nbSeqId);if(!r||r.seq.locked)return;
@@ -1084,10 +1126,12 @@ function renderSeqs(){
 
 function renderCarpetas(){
   const list=document.getElementById('plist-carpetas');
+  const hasSel=S.sel&&S.sel.length>0;
   list.innerHTML=S.carpetas.map(c=>`<div class="carpeta-item${c.id===S.currentCarpeta?' on':''}" onclick="swCarpeta('${c.id}')">
     <span style="font-size:12px">📁</span>
     <span class="carpeta-name">${esc(c.name)}</span>
     <span class="carpeta-count">${c.refs.length}</span>
+    ${hasSel?`<button class="btn btn-green bico" style="font-size:9px;padding:2px 6px" onclick="event.stopPropagation();addSelToCarpeta('${c.id}')" title="Añadir selección">＋</button>`:''}
     <button class="btn btn-red bico" style="font-size:9px;padding:2px 5px" onclick="event.stopPropagation();delCarpeta('${c.id}')">✕</button>
   </div>`).join('')||'<div class="phint">Sin carpetas</div>';
 
@@ -1112,6 +1156,10 @@ function renderCarpetas(){
           <span class="sp" style="background:rgba(200,169,110,.15);color:var(--gold2)">E${String(r.ep.num).padStart(2,'0')}</span>
           ${spIE(r.seq.int_ext)}${spMom(r.seq.momento)}${spDif(r.seq.dificultad)}${r.seq.locked?'<span class="sp-lock">[L]</span>':''}
         </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:1px;flex-shrink:0">
+        <button class="sec-arrow" style="width:16px;height:14px;font-size:8px" onclick="event.stopPropagation();moveCarpetaRef('${carpeta.id}','${ref.seqId}',-1)">▲</button>
+        <button class="sec-arrow" style="width:16px;height:14px;font-size:8px" onclick="event.stopPropagation();moveCarpetaRef('${carpeta.id}','${ref.seqId}',1)">▼</button>
       </div>
       <button class="pcollapse" style="font-size:10px;opacity:.5" onclick="removeFromCarpeta('${carpeta.id}','${r.seq.id}',event)" title="Quitar de la carpeta">✕</button>
     </div>`;
@@ -1338,7 +1386,7 @@ function renderSeqView(seq,ep){
       ${sky.bg?`<span style="font-family:'DM Mono',monospace;font-size:9px;padding:2px 8px;border-radius:10px;background:${sky.bg};color:${sky.fg||'#fff'}">${sky.label}</span>`:''}
       <div style="position:relative">
         <button class="state-btn" onclick="toggleStatePopover(event,'spop-${seq.id}')" title="Estado de trabajo">
-          <div class="state-btn-dot${seq.workState==='done'?' done-dot':''}" id="sbd-${seq.id}" style="background:${seq.workState==='pending'||!seq.workState?'#303030':seq.workState==='working'?'#1e1e1e':seq.workState==='ready'?'#131313':'#111'}"></div>
+          <div class="state-btn-dot${seq.workState==='done'?' done-dot':''}" id="sbd-${seq.id}" style="background:${seq.workState==='pending'||!seq.workState?'#303030':seq.workState==='working'?'#1e1e1e':seq.workState==='ready'?'#131313':seq.workState==='clave'?'#0d2010':'#111'}"></div>
         </button>
         <div class="state-popover" id="spop-${seq.id}">
           <div class="state-pop-item${!seq.workState||seq.workState==='pending'?' on':''}" onclick="setWorkState('pending');closeStatePopovers()">
@@ -1352,6 +1400,9 @@ function renderSeqView(seq,ep){
           </div>
           <div class="state-pop-item${seq.workState==='done'?' on':''}" onclick="setWorkState('done');closeStatePopovers()">
             <div class="state-pop-dot done-dot" style="background:#111"></div><span class="state-pop-lbl">Rodado</span>
+          </div>
+          <div class="state-pop-item${seq.workState==='clave'?' on':''}" onclick="setWorkState('clave');closeStatePopovers()">
+            <div class="state-pop-dot" style="background:#0d2010;border:1px solid #2a5a2a"></div><span class="state-pop-lbl" style="color:#6abf6a">Clave</span>
           </div>
         </div>
       </div>
