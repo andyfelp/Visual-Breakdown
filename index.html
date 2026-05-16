@@ -1409,7 +1409,24 @@ function handleImport(e){
   r.readAsText(file);e.target.value='';
 }
 function iCloudSave(){const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='VB_sync.json';a.click();URL.revokeObjectURL(url);toast('Guarda en iCloud Drive / Visual Breakdown /');}
-function iCloudLoad(){const input=document.createElement('input');input.type='file';input.accept='.json';input.onchange=e=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{try{const imp=JSON.parse(ev.target.result);if(imp.projects){S=imp;migrate();save();render();updateSelUI();toast('☁️ Cargado desde iCloud ✓');}else toast('Archivo no reconocido');}catch(err){toast('Error al leer el archivo');};r.readAsText(file);};input.click();};}
+function iCloudLoad(){
+  const input=document.createElement('input');
+  input.type='file';
+  input.accept='.json';
+  input.onchange=e=>{
+    const file=e.target.files[0];if(!file)return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      try{
+        const imp=JSON.parse(ev.target.result);
+        if(imp.projects){S=imp;migrate();save();render();updateSelUI();toast('☁️ Cargado desde iCloud ✓');}
+        else toast('Archivo no reconocido');
+      }catch(err){toast('Error al leer el archivo');}
+    };
+    r.readAsText(file);
+  };
+  input.click();
+}
 
 // ── MISC ──────────────────────────────────────────────────────────────────
 function toggleSubmenu(){document.getElementById('submenu').classList.toggle('open');}
