@@ -639,24 +639,24 @@ function load(){
     if(!S.carpetas)S.carpetas=[];if(!S.collapsedSecs)S.collapsedSecs={};if(!S.csTabs)S.csTabs={};if(S.basicCollapsed===undefined)S.basicCollapsed=false;if(S.globalLock===undefined)S.globalLock=false;
     if(S.poolOn===undefined)S.poolOn=true;
     if(!S.poolTab)S.poolTab='nav';
-    // migrate old section orders to new default
+    // migrate all sequences to current data model
+    const VALID_SECS=['refs','planificacion','luz_planta','cam_planta','notas'];
     S.projects.forEach(p=>p.episodes.forEach(e=>e.sequences.forEach(seq=>{
+      // workState default
       if(!seq.workState)seq.workState='pending';
-      if(!seq.planos)seq.planos=[_newPlano(1),_newPlano(2)];
-      // Migrate sectionOrder — ensure planificacion exists, remove old sections
-const validSecs=['refs','planificacion','luz_planta','cam_planta','notas'];
-if(!seq.sectionOrder)seq.sectionOrder=[...DEFAULT_SECS];
-// remove old sections
-seq.sectionOrder=seq.sectionOrder.filter(s=>validSecs.includes(s));
-// add planificacion if missing
-if(!seq.sectionOrder.includes('planificacion')){
-  const refsIdx=seq.sectionOrder.indexOf('refs');
-  seq.sectionOrder.splice(refsIdx>=0?refsIdx+1:1,0,'planificacion');
-}
-// add any missing valid section
-validSecs.forEach(s=>{if(!seq.sectionOrder.includes(s))seq.sectionOrder.push(s);});
-      if(!seq.workState)seq.workState='pending';
-      if(!seq.planos)seq.planos=[_newPlano(1),_newPlano(2)];
+      // planos — add if missing
+      if(!seq.planos||!seq.planos.length)seq.planos=[_newPlano(1),_newPlano(2)];
+      // sectionOrder — rebuild to only valid sections, always includes planificacion
+      if(!seq.sectionOrder)seq.sectionOrder=[...DEFAULT_SECS];
+      // strip invalid sections (camaras, foto, etc)
+      seq.sectionOrder=seq.sectionOrder.filter(s=>VALID_SECS.includes(s));
+      // inject planificacion after refs if missing
+      if(!seq.sectionOrder.includes('planificacion')){
+        const ri=seq.sectionOrder.indexOf('refs');
+        seq.sectionOrder.splice(ri>=0?ri+1:0,0,'planificacion');
+      }
+      // ensure all valid sections present
+      VALID_SECS.forEach(s=>{if(!seq.sectionOrder.includes(s))seq.sectionOrder.push(s);});
     })));
     if(!S.projects.length)_addProj('Mi Proyecto');
   }catch(e){
@@ -1503,7 +1503,7 @@ function buildSection(key,seq,ep,idx,total){
 function renderSeqView(seq,ep){
   const sky=getSky(seq.skyColor||'');
   const barStyle=sky.bg?`background:${sky.bg}`:'background:var(--b1)';
-  const order=(seq.sectionOrder&&seq.sectionOrder.includes('planificacion'))?seq.sectionOrder:[...DEFAULT_SECS];
+  const order=(seq.sectionOrder&&seq.sectionOrder.length===5&&seq.sectionOrder.includes('planificacion'))?seq.sectionOrder:[...DEFAULT_SECS];
   const locked=!!seq.locked;
   const sectionsHtml=order.map((k,i)=>buildSection(k,seq,ep,i,order.length)).join('');
   return`<div class="card">
