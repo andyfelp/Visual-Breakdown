@@ -423,6 +423,18 @@ body.light .btn-green{background:#d0f0d8;color:#1a5a20;border-color:#80c090}
 .seq-basic-collapsed .seq-basic-body{display:none}
 .seq-collapse-btn{font-family:'DM Mono',monospace;font-size:11px;color:var(--txt3);background:none;border:none;cursor:pointer;padding:2px 4px;line-height:1;transition:color .15s;flex-shrink:0}
 .seq-collapse-btn:hover{color:var(--txt2)}
+
+/* PLANIFICACION */
+.plano-block{background:var(--s2);border:1px solid var(--b1);border-radius:var(--r);margin-bottom:8px;overflow:hidden}
+.plano-head{display:flex;align-items:center;gap:6px;padding:.6rem .85rem;cursor:pointer;transition:background .1s;user-select:none}
+.plano-head:hover{background:var(--s3)}
+.plano-badge{font-family:'DM Mono',monospace;font-size:9px;padding:2px 7px;border-radius:10px;background:var(--s4);color:var(--txt2);white-space:nowrap}
+.plano-num{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);min-width:20px}
+.plano-name{font-size:12px;font-weight:500;color:var(--txt);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plano-desc-preview{font-size:11px;color:var(--txt3);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic}
+.plano-body{padding:.75rem .85rem;border-top:1px solid var(--b1)}
+.plano-body.hidden{display:none}
+.plano-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -606,13 +618,15 @@ const SKY=[
 ];
 function getSky(id){return SKY.find(s=>s.id===id)||SKY[0];}
 
-const OPTICAS=['14mm','18mm','21mm','24mm','25mm','28mm','32mm','35mm','40mm','50mm','65mm','75mm','85mm','100mm','135mm','150mm','200mm','24-70mm zoom','70-200mm zoom','Macro','Anamórfico','Ojo de pez','Personalizada'];
+const TIPOS_PLANO=['PG','PML','PM','PMC','PP','PPP','PD','Plano secuencia'];
+const CAMARAS_PLANO=['A','B','C','D'];
+const SOPORTES=['Mano','Trípode','Slider','Dolly','Steady','Ronin','Grúa','Dron','Grip'];
 const INTEXTS=['INT','EXT','INT/EXT'];
 const MOMENTOS=['Día','Noche','Amanecer','Atardecer','Indeterminado'];
 const DIFS=['Baja','Media','Alta'];
 const TONOS=['Neutro','Tenso','Íntimo','Épico','Cómico','Onírico','Violento','Romántico','Misterioso'];
 // Default section order
-const DEFAULT_SECS=['refs','camaras','luz_planta','cam_planta','foto','notas'];
+const DEFAULT_SECS=['refs','planificacion','luz_planta','cam_planta','notas'];
 const KEY='vb5';
 
 let S={currentProj:null,currentEp:null,currentSeq:null,currentCarpetaSeq:null,sel:[],poolOn:true,lightMode:false,poolTab:'nav',currentCarpeta:null,carpetas:[],collapsedSecs:{},basicCollapsed:false,projects:[]};
@@ -631,8 +645,21 @@ function load(){
     // migrate old section orders to new default
     S.projects.forEach(p=>p.episodes.forEach(e=>e.sequences.forEach(seq=>{
       if(!seq.workState)seq.workState='pending';
-      if(!seq.sectionOrder||seq.sectionOrder.length<6)seq.sectionOrder=[...DEFAULT_SECS];
+      if(!seq.planos)seq.planos=[_newPlano(1),_newPlano(2)];
+      // Migrate sectionOrder — ensure planificacion exists, remove old sections
+const validSecs=['refs','planificacion','luz_planta','cam_planta','notas'];
+if(!seq.sectionOrder)seq.sectionOrder=[...DEFAULT_SECS];
+// remove old sections
+seq.sectionOrder=seq.sectionOrder.filter(s=>validSecs.includes(s));
+// add planificacion if missing
+if(!seq.sectionOrder.includes('planificacion')){
+  const refsIdx=seq.sectionOrder.indexOf('refs');
+  seq.sectionOrder.splice(refsIdx>=0?refsIdx+1:1,0,'planificacion');
+}
+// add any missing valid section
+validSecs.forEach(s=>{if(!seq.sectionOrder.includes(s))seq.sectionOrder.push(s);});
       if(!seq.workState)seq.workState='pending';
+      if(!seq.planos)seq.planos=[_newPlano(1),_newPlano(2)];
     })));
     if(!S.projects.length)_addProj('Mi Proyecto');
   }catch(e){
@@ -675,8 +702,8 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 // FACTORIES
 function _addProj(name){const p={id:uid(),name,color:'#c8a96e',episodes:[]};S.projects.push(p);S.currentProj=p.id;S.currentEp=null;S.currentSeq=null;}
 function _newEp(n){return{id:uid(),num:n,titulo:`Episodio ${n}`,director:'',camara:'',lookbook:'',notas:'',images:[],sequences:[]}}
-function _newSeq(n){return{id:uid(),num:String(n),nombre:`Secuencia ${n}`,loc:'',int_ext:'INT',momento:'Día',personajes:'',accion:'',tono:'Neutro',skyColor:'',dificultad:'Media',workState:'pending',locked:false,sectionOrder:[...DEFAULT_SECS],cameras:[_newCam('A'),_newCam('B')],luz:'',luz_planta:'',luz_images:[],camara_planta:'',camara_planta_images:[],color_notas:'',tecnicas:'',refs:'',images:[],notas_texto:''}}
-function _newCam(lbl){return{label:lbl,optica:'35mm',optica_custom:'',notas:''}}
+function _newSeq(n){return{id:uid(),num:String(n),nombre:`Secuencia ${n}`,loc:'',int_ext:'INT',momento:'Día',personajes:'',accion:'',tono:'Neutro',skyColor:'',dificultad:'Media',workState:'pending',locked:false,sectionOrder:[...DEFAULT_SECS],planos:[_newPlano(1),_newPlano(2)],luz:'',luz_planta:'',luz_images:[],camara_planta:'',camara_planta_images:[],color_notas:'',tecnicas:'',refs:'',images:[],notas_texto:''}}
+function _newPlano(n){return{id:uid(),num:n,nombre:`Plano ${n}`,tipo:'PM',camara:'A',soporte:'Trípode',descripcion:'',images:[],collapsed:false}}
 
 // GETTERS
 function cProj(){return S.projects.find(p=>p.id===S.currentProj)||null}
@@ -701,9 +728,15 @@ function swSeqFromSearch(epId,seqId){
 function swSeq(id){S.currentSeq=id;S.currentCarpetaSeq=null;save();renderPool();renderMain();}
 function delSeq(id){const ep=cEp();if(!ep)return;if(!confirm('¿Eliminar secuencia?'))return;ep.sequences=ep.sequences.filter(s=>s.id!==id);S.sel=S.sel.filter(s=>s.seqId!==id);S.currentSeq=ep.sequences.length?ep.sequences[ep.sequences.length-1].id:null;save();renderPool();renderMain();updateSelUI();}
 function dupSeq(id){const ep=cEp();if(!ep)return;const s=ep.sequences.find(x=>x.id===id);if(!s)return;const c=JSON.parse(JSON.stringify(s));c.id=uid();c.num=String(ep.sequences.length+1);c.nombre+=' (copia)';c.images=[];c.luz_images=[];c.camara_planta_images=[];c.locked=false;ep.sequences.push(c);S.currentSeq=c.id;save();renderPool();renderMain();}
-function addCam(){const s=cSeqActive();if(!s||s.locked)return;const used=s.cameras.map(c=>c.label);const next='ABCDEFGH'.split('').find(l=>!used.includes(l))||'X';s.cameras.push(_newCam(next));save();renderMain();}
-function remCam(i){const s=cSeqActive();if(!s||s.locked||s.cameras.length<=1)return;s.cameras.splice(i,1);save();renderMain();}
-window.addCam=addCam;window.remCam=remCam;
+function addPlano(){const s=cSeqActive();if(!s||s.locked)return;if(!s.planos)s.planos=[];s.planos.push(_newPlano(s.planos.length+1));save();renderMain();}
+function remPlano(i){const s=cSeqActive();if(!s||s.locked||s.planos.length<=1)return;s.planos.splice(i,1);save();renderMain();}
+function updPlano(i,k,v){const s=cSeqActive();if(!s||s.locked||!s.planos[i])return;s.planos[i][k]=v;save();}
+function togglePlano(seqId,i){const r=findSeqById(seqId);if(!r)return;if(!r.seq.planos[i])return;r.seq.planos[i].collapsed=!r.seq.planos[i].collapsed;save();renderMain();}
+window.addPlano=addPlano;window.remPlano=remPlano;window.updPlano=updPlano;window.togglePlano=togglePlano;
+function planoImgAdd(files,seqId,idx){const r=findSeqById(seqId);if(!r||r.seq.locked)return;readFiles(files,imgs=>{if(!r.seq.planos[idx].images)r.seq.planos[idx].images=[];r.seq.planos[idx].images.push(...imgs);save();renderMain();});}
+function planoImgDel(seqId,idx,imgIdx,e){e.stopPropagation();const r=findSeqById(seqId);if(!r||r.seq.locked)return;r.seq.planos[idx].images.splice(imgIdx,1);save();renderMain();}
+function planoImgOpen(seqId,idx,imgIdx){const r=findSeqById(seqId);if(!r)return;lbCtx={arr:r.seq.planos[idx].images,idx:imgIdx};lbOpen();}
+window.planoImgAdd=planoImgAdd;window.planoImgDel=planoImgDel;window.planoImgOpen=planoImgOpen;
 
 // CARPETA NAV — stays in carpeta tab, shows seq detail
 function swCarpetaSeq(projId,epId,seqId){
@@ -1089,7 +1122,7 @@ function setScope(scope){
 }
 function seqMatchesQuery(seq,q){
   if(!q)return true;
-  const fields=[seq.nombre,seq.loc,seq.personajes,seq.accion,seq.tono,seq.momento,seq.int_ext,seq.dificultad,seq.luz,seq.color_notas,seq.tecnicas,seq.refs,seq.notas_texto,...(seq.cameras||[]).map(c=>c.notas+' '+opLbl(c))].join(' ').toLowerCase();
+  const fields=[seq.nombre,seq.loc,seq.personajes,seq.accion,seq.tono,seq.momento,seq.int_ext,seq.dificultad,seq.luz,seq.color_notas,seq.tecnicas,seq.refs,seq.notas_texto,...(seq.planos||[]).map(p=>p.nombre+' '+p.descripcion)].join(' ').toLowerCase();
   return q.split(' ').every(word=>fields.includes(word));
 }
 
@@ -1377,21 +1410,50 @@ function buildSection(key,seq,ep,idx,total){
 
   if(key==='refs')return`<div class="section-block" data-sec="refs"><div class="divider"></div>${hdr('Imágenes de referencia')}${buildGal(seq.images,'seqImgAdd','seqImgDel','seqImgOpen',`${seq.id}__ref`,locked)}</div>`;
 
-  if(key==='camaras'){
-    const camsHtml=seq.cameras.map((cam,i)=>{const isC=cam.optica==='Personalizada';return`<div class="camblock"><div class="camhead"><span class="camlbl">Cámara ${cam.label}</span>${!locked&&seq.cameras.length>1?`<button class="btn btn-red" style="font-size:9px;padding:2px 7px" onclick="remCam(${i})">✕</button>`:''}</div><div class="g2"><div class="f"><label>Óptica</label><div style="display:flex;gap:6px"><select style="width:${isC?'48%':'100%'}" onchange="updCam(${i},'optica',this.value)" ${locked?'disabled':''}>${OPTICAS.map(o=>`<option${o===cam.optica?' selected':''}>${o}</option>`).join('')}</select>${isC?`<input style="flex:1" placeholder="Ej: 50mm T1.3" value="${esc(cam.optica_custom)}" oninput="updCam(${i},'optica_custom',this.value)" ${locked?'disabled':''}>`:''}</div></div><div class="f"><label>Notas</label><input value="${esc(cam.notas)}" placeholder="Movimiento, encuadre…" oninput="updCam(${i},'notas',this.value)" ${locked?'disabled':''}></div></div></div>`;}).join('');
-    const addBtn=!locked?`<button class="btn" style="font-size:9px;padding:2px 8px;flex-shrink:0" onclick="addCam()">＋ Cámara</button>`:'';
-    return`<div class="section-block" data-sec="camaras"><div class="divider"></div>${hdr('— Cámaras y ópticas',addBtn)}${camsHtml}</div>`;
+  if(key==='planificacion'){
+    const planos=seq.planos||[];
+    const planosHtml=planos.map((p,i)=>{
+      const badges=`<span class="plano-badge">${p.tipo||'PM'}</span><span class="plano-badge">Cam ${p.camara||'A'}</span><span class="plano-badge">${p.soporte||'Trípode'}</span>`;
+      const headContent=p.collapsed
+        ?`<span class="plano-num">${i+1}</span><span class="plano-name">${esc(p.nombre||'Plano '+(i+1))}</span>${badges}${p.descripcion?`<span class="plano-desc-preview">${esc(p.descripcion)}</span>`:''}`
+        :`<span class="plano-num">${i+1}</span><span class="plano-name">${esc(p.nombre||'Plano '+(i+1))}</span>${badges}`;
+      const imgThumbs=(p.images||[]).map((img,ii)=>`<div class="iwrap" style="width:80px;height:56px" onclick="planoImgOpen('${seq.id}',${i},${ii})"><img src="${img.data}" alt="">${!locked?`<button class="idel" onclick="planoImgDel('${seq.id}',${i},${ii},event)">✕</button>`:''}</div>`).join('');
+      const imgZone=locked?'':`<div class="dzone" onclick="document.getElementById('pfi-${seq.id}-${i}').click()" style="margin-top:6px"><input type="file" id="pfi-${seq.id}-${i}" accept="image/*" multiple style="display:none" onchange="planoImgAdd(this.files,'${seq.id}',${i})"><span>＋ Fotos de referencia</span></div>`;
+      return`<div class="plano-block">
+        <div class="plano-head" onclick="togglePlano('${seq.id}',${i})">
+          ${headContent}
+          ${!locked?`<button class="btn btn-red bico" style="font-size:9px;padding:1px 5px" onclick="event.stopPropagation();remPlano(${i})">✕</button>`:''}
+          <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--txt3)">${p.collapsed?'▼':'▲'}</span>
+        </div>
+        <div class="plano-body${p.collapsed?' hidden':''}">
+          <div class="plano-grid">
+            <div class="f"><label>Nombre</label><input value="${esc(p.nombre||'')}" placeholder="Ej: Plano apertura" oninput="updPlano(${i},'nombre',this.value)" ${locked?'disabled':''}></div>
+            <div class="f"><label>Tipo de plano</label><select onchange="updPlano(${i},'tipo',this.value)" ${locked?'disabled':''}>${TIPOS_PLANO.map(t=>`<option${t===p.tipo?' selected':''}>${t}</option>`).join('')}</select></div>
+            <div class="f"><label>Cámara</label><select onchange="updPlano(${i},'camara',this.value)" ${locked?'disabled':''}>${CAMARAS_PLANO.map(t=>`<option${t===p.camara?' selected':''}>${t}</option>`).join('')}</select></div>
+          </div>
+          <div class="f" style="margin-bottom:8px"><label>Soporte</label><select onchange="updPlano(${i},'soporte',this.value)" ${locked?'disabled':''}>${SOPORTES.map(t=>`<option${t===p.soporte?' selected':''}>${t}</option>`).join('')}</select></div>
+          <div class="f" style="margin-bottom:8px"><label>Descripción</label><textarea oninput="updPlano(${i},'descripcion',this.value)" placeholder="Movimiento, encuadre, acción…" ${locked?'disabled':''}>${esc(p.descripcion||'')}</textarea></div>
+          <div class="igallery">${imgThumbs}</div>${imgZone}
+        </div>
+      </div>`;
+    }).join('');
+    const addBtn=!locked?`<button class="btn" style="font-size:9px;padding:2px 8px;flex-shrink:0" onclick="addPlano()">＋ Plano</button>`:'';
+    return`<div class="section-block" data-sec="planificacion"><div class="divider"></div>${hdr('— Planificación',addBtn)}${planosHtml}</div>`;
   }
 
   if(key==='luz_planta')return`<div class="section-block" data-sec="luz_planta"><div class="divider"></div>${hdr('— Planta de luz')}<div class="f" style="margin-bottom:8px"><label>Descripción</label><textarea oninput="updS('luz_planta',this.value)" placeholder="Posición de focos, remos, difusores…" ${locked?'disabled':''}>${esc(seq.luz_planta)}</textarea></div>${buildGal(seq.luz_images,'seqImgAdd','seqImgDel','seqImgOpen',`${seq.id}__luz`,locked)}</div>`;
 
   if(key==='cam_planta')return`<div class="section-block" data-sec="cam_planta"><div class="divider"></div>${hdr('— Planta de cámara')}<div class="f" style="margin-bottom:8px"><label>Descripción</label><textarea oninput="updS('camara_planta',this.value)" placeholder="Ejes, posiciones, movimientos…" ${locked?'disabled':''}>${esc(seq.camara_planta)}</textarea></div>${buildGal(seq.camara_planta_images,'seqImgAdd','seqImgDel','seqImgOpen',`${seq.id}__cam`,locked)}</div>`;
 
-  if(key==='foto')return`<div class="section-block" data-sec="foto"><div class="divider"></div>${hdr('— Fotografía')}<div class="g2"><div class="f"><label>Propuesta de luz</label><textarea oninput="updS('luz',this.value)" ${locked?'disabled':''}>${esc(seq.luz)}</textarea></div><div class="f"><label>Color / Paleta</label><textarea oninput="updS('color_notas',this.value)" ${locked?'disabled':''}>${esc(seq.color_notas)}</textarea></div></div><div class="f" style="margin-bottom:10px"><label>Notas técnicas</label><textarea oninput="updS('tecnicas',this.value)" ${locked?'disabled':''}>${esc(seq.tecnicas)}</textarea></div><div class="f"><label>Referencias visuales</label><input value="${esc(seq.refs)}" placeholder="Películas, fotógrafos…" oninput="updS('refs',this.value)" ${locked?'disabled':''}></div></div>`;
+
 
   if(key==='notas'){
-    const preview=seq.notas_texto?seq.notas_texto.slice(0,60)+(seq.notas_texto.length>60?'…':''):'Pulsa para abrir el cuaderno…';
-    return`<div class="section-block" data-sec="notas"><div class="divider"></div>${hdr('— Notas')}<div class="notebook-trigger" onclick="openNotebook('${seq.id}')"><span style="font-size:16px">📓</span><span class="notebook-preview">${esc(preview)}</span><span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--txt3)">Abrir ▸</span></div></div>`;
+    return`<div class="section-block" data-sec="notas"><div class="divider"></div>${hdr('— Notas')}
+    <div style="position:relative">
+      <textarea style="font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 10px;border-radius:var(--r);border:1px solid var(--b1);background:var(--s2);color:var(--txt);width:100%;outline:none;resize:none;min-height:80px;max-height:180px;overflow-y:auto;line-height:1.55;caret-color:var(--gold)" placeholder="Notas rápidas…" oninput="updS('notas_texto',this.value)" ${locked?'disabled':''}>${esc(seq.notas_texto)}</textarea>
+      <button onclick="openNotebook('${seq.id}')" style="position:absolute;bottom:6px;right:6px;font-family:'DM Mono',monospace;font-size:9px;color:var(--txt3);background:var(--s3);border:1px solid var(--b2);border-radius:4px;padding:2px 7px;cursor:pointer;transition:all .15s" title="Abrir en pantalla completa">✎ Abrir</button>
+    </div>
+    </div>`;
   }
   return'';
 }
@@ -1399,7 +1461,7 @@ function buildSection(key,seq,ep,idx,total){
 function renderSeqView(seq,ep){
   const sky=getSky(seq.skyColor||'');
   const barStyle=sky.bg?`background:${sky.bg}`:'background:var(--b1)';
-  const order=seq.sectionOrder&&seq.sectionOrder.length===DEFAULT_SECS.length?seq.sectionOrder:[...DEFAULT_SECS];
+  const order=(seq.sectionOrder&&seq.sectionOrder.includes('planificacion'))?seq.sectionOrder:[...DEFAULT_SECS];
   const locked=!!seq.locked;
   const sectionsHtml=order.map((k,i)=>buildSection(k,seq,ep,i,order.length)).join('');
   return`<div class="card">
@@ -1407,7 +1469,6 @@ function renderSeqView(seq,ep){
     <div class="sdhead ${difCls(seq.dificultad)}">
       <span class="sdnum">S${seq.num}</span>
       ${bdgIE(seq.int_ext)}${bdgMom(seq.momento)}
-      <span class="badge b-op">${seq.cameras.map(c=>opLbl(c)).join(' · ')}</span>
       ${bdgDif(seq.dificultad)}
       <span class="sdtitle">${esc(seq.nombre)}</span>
       ${sky.bg?`<span style="font-family:'DM Mono',monospace;font-size:9px;padding:2px 8px;border-radius:10px;background:${sky.bg};color:${sky.fg||'#fff'}">${sky.label}</span>`:''}
@@ -1493,7 +1554,7 @@ function doPDF(){
   function pf(l,v){if(!v)return'';return`<div style="margin-bottom:.5rem"><div style="font-size:9px;font-family:'DM Mono',monospace;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">${l}</div><div style="font-size:12px;color:#111;line-height:1.5">${v}</div></div>`;}
   const body=seqs.map(seq=>{
     const d=dc[seq.dificultad]||dc.Media;const sky=getSky(seq.skyColor||'');
-    const cams=seq.cameras.map(c=>`<b>Cam ${c.label}:</b> ${opLbl(c)}${c.notas?' — '+c.notas:''}`).join(' &nbsp;|&nbsp; ');
+    const plansList=(seq.planos||[]).map(p=>`<b>${p.nombre||'Plano'}:</b> ${p.tipo} · Cam ${p.camara} · ${p.soporte}${p.descripcion?' — '+p.descripcion:''}`).join('<br>');
     const imgs=(seq.images||[]).map(i=>`<img src="${i.data}" style="width:115px;height:82px;object-fit:cover;border-radius:4px;border:1px solid #ddd;margin:2px">`).join('');
     const luzI=(seq.luz_images||[]).map(i=>`<img src="${i.data}" style="width:115px;height:82px;object-fit:cover;border-radius:4px;border:1px solid #ddd;margin:2px">`).join('');
     const camI=(seq.camara_planta_images||[]).map(i=>`<img src="${i.data}" style="width:115px;height:82px;object-fit:cover;border-radius:4px;border:1px solid #ddd;margin:2px">`).join('');
@@ -1516,7 +1577,7 @@ function doPDF(){
         ${seq.luz_planta||luzI?`<div style="margin:.5rem 0">${pf('Planta de luz',seq.luz_planta)}${luzI?`<div>${luzI}</div>`:''}</div>`:''}
         ${seq.camara_planta||camI?`<div style="margin:.5rem 0">${pf('Planta de cámara',seq.camara_planta)}${camI?`<div>${camI}</div>`:''}</div>`:''}
         ${pf('Notas técnicas',seq.tecnicas)}${pf('Notas',seq.notas_texto)}
-        ${cams?`<div style="margin-top:.5rem;padding:.5rem;background:#f8f8f8;border-radius:4px;font-size:11px">${cams}</div>`:''}
+        ${plansList?`<div style="margin-top:.5rem;padding:.5rem;background:#f8f8f8;border-radius:4px;font-size:11px;line-height:1.7">${plansList}</div>`:''}
       </div>
     </div>`;
   }).join('');
