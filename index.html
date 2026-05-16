@@ -629,35 +629,44 @@ const KEY='vb5';
 let S={currentProj:null,currentEp:null,currentSeq:null,currentCarpetaSeq:null,sel:[],poolOn:true,lightMode:false,poolTab:'nav',currentCarpeta:null,carpetas:[],collapsedSecs:{},basicCollapsed:false,globalLock:false,projects:[]};
 let lbCtx=null;let nbSeqId=null;
 
+// ── MIGRATION — run after any state load ──────────────────────────────────
+function migrateState(){
+  const VALID=['refs','planificacion','luz_planta','cam_planta','notas'];
+  // state defaults
+  if(!S.sel)S.sel=[];
+  if(!S.carpetas)S.carpetas=[];
+  if(!S.collapsedSecs)S.collapsedSecs={};
+  if(!S.csTabs)S.csTabs={};
+  if(S.basicCollapsed===undefined)S.basicCollapsed=false;
+  if(S.globalLock===undefined)S.globalLock=false;
+  if(S.poolOn===undefined)S.poolOn=true;
+  if(!S.poolTab)S.poolTab='nav';
+  // migrate all sequences
+  (S.projects||[]).forEach(p=>(p.episodes||[]).forEach(e=>(e.sequences||[]).forEach(seq=>{
+    // workState
+    if(!seq.workState)seq.workState='pending';
+    // planos
+    if(!seq.planos||!seq.planos.length)seq.planos=[_newPlano(1),_newPlano(2)];
+    // sectionOrder — strip old sections, ensure all valid present
+    if(!seq.sectionOrder)seq.sectionOrder=[...DEFAULT_SECS];
+    seq.sectionOrder=seq.sectionOrder.filter(s=>VALID.includes(s));
+    if(!seq.sectionOrder.includes('planificacion')){
+      const ri=seq.sectionOrder.indexOf('refs');
+      seq.sectionOrder.splice(ri>=0?ri+1:0,0,'planificacion');
+    }
+    VALID.forEach(s=>{if(!seq.sectionOrder.includes(s))seq.sectionOrder.push(s);});
+    // ensure exactly 5 sections in correct positions
+    if(seq.sectionOrder.length!==5)seq.sectionOrder=[...DEFAULT_SECS];
+  })));
+}
+
 // ── STATE ──────────────────────────────────────────────────────────────────
 function load(){
   try{
     const r=localStorage.getItem(KEY);
     if(r)S=JSON.parse(r);
     if(!S.projects)S.projects=[];
-    if(!S.sel)S.sel=[];
-    if(!S.carpetas)S.carpetas=[];if(!S.collapsedSecs)S.collapsedSecs={};if(!S.csTabs)S.csTabs={};if(S.basicCollapsed===undefined)S.basicCollapsed=false;if(S.globalLock===undefined)S.globalLock=false;
-    if(S.poolOn===undefined)S.poolOn=true;
-    if(!S.poolTab)S.poolTab='nav';
-    // migrate all sequences to current data model
-    const VALID_SECS=['refs','planificacion','luz_planta','cam_planta','notas'];
-    S.projects.forEach(p=>p.episodes.forEach(e=>e.sequences.forEach(seq=>{
-      // workState default
-      if(!seq.workState)seq.workState='pending';
-      // planos — add if missing
-      if(!seq.planos||!seq.planos.length)seq.planos=[_newPlano(1),_newPlano(2)];
-      // sectionOrder — rebuild to only valid sections, always includes planificacion
-      if(!seq.sectionOrder)seq.sectionOrder=[...DEFAULT_SECS];
-      // strip invalid sections (camaras, foto, etc)
-      seq.sectionOrder=seq.sectionOrder.filter(s=>VALID_SECS.includes(s));
-      // inject planificacion after refs if missing
-      if(!seq.sectionOrder.includes('planificacion')){
-        const ri=seq.sectionOrder.indexOf('refs');
-        seq.sectionOrder.splice(ri>=0?ri+1:0,0,'planificacion');
-      }
-      // ensure all valid sections present
-      VALID_SECS.forEach(s=>{if(!seq.sectionOrder.includes(s))seq.sectionOrder.push(s);});
-    })));
+    migrateState();
     if(!S.projects.length)_addProj('Mi Proyecto');
   }catch(e){
     S={currentProj:null,currentEp:null,currentSeq:null,currentCarpetaSeq:null,sel:[],poolOn:true,lightMode:false,poolTab:'nav',currentCarpeta:null,carpetas:[],collapsedSecs:{},basicCollapsed:false,globalLock:false,projects:[]};
@@ -1503,7 +1512,7 @@ function buildSection(key,seq,ep,idx,total){
 function renderSeqView(seq,ep){
   const sky=getSky(seq.skyColor||'');
   const barStyle=sky.bg?`background:${sky.bg}`:'background:var(--b1)';
-  const order=(seq.sectionOrder&&seq.sectionOrder.length===5&&seq.sectionOrder.includes('planificacion'))?seq.sectionOrder:[...DEFAULT_SECS];
+  const order=(seq.sectionOrder&&seq.sectionOrder.length===5)?seq.sectionOrder:[...DEFAULT_SECS];
   const locked=!!seq.locked;
   const sectionsHtml=order.map((k,i)=>buildSection(k,seq,ep,i,order.length)).join('');
   return`<div class="card">
@@ -1573,7 +1582,6 @@ function renderSeqView(seq,ep){
 function updP(k,v){if(S.globalLock){toast('[L] Proyecto bloqueado');return;}const p=cProj();if(!p)return;p[k]=v;save();if(k==='name'){renderProjs();document.getElementById('proj-lbl').textContent=v;}if(k==='color')renderMain();}
 function updEp(k,v){if(S.globalLock){toast('[L] Proyecto bloqueado');return;}const e=cEp();if(!e)return;e[k]=v;save();if(k==='titulo')renderEps();}
 function updS(k,v){if(S.globalLock){toast('[L] Proyecto bloqueado');return;}const s=cSeqActive();if(!s||s.locked)return;s[k]=v;save();if(['nombre','int_ext','momento','dificultad','skyColor'].includes(k)){renderSeqs();refreshSHead(s);}}
-function updCam(i,k,v){const s=cSeqActive();if(!s||s.locked||!s.cameras[i])return;s.cameras[i][k]=v;save();if(k==='optica')renderMain();}
 function refreshSHead(seq){const h=document.querySelector('.sdhead');if(!h)return;h.className=`sdhead ${difCls(seq.dificultad)}`;const t=h.querySelector('.sdtitle');if(t)t.textContent=seq.nombre||`Secuencia ${seq.num}`;}
 
 // EXPORT
@@ -1642,7 +1650,7 @@ function handleImport(e){
   r.onload=ev=>{
     try{
       const imp=JSON.parse(ev.target.result);
-      if(imp.projects){S=imp;if(!S.sel)S.sel=[];if(!S.carpetas)S.carpetas=[];if(!S.collapsedSecs)S.collapsedSecs={};if(!S.csTabs)S.csTabs={};if(S.basicCollapsed===undefined)S.basicCollapsed=false;if(S.globalLock===undefined)S.globalLock=false;save();render();updateSelUI();toast('Importado ✓');}
+      if(imp.projects){S=imp;migrateState();save();render();updateSelUI();toast('Importado ✓');}
       else toast('Formato no reconocido');
     }catch(err){toast('Error al leer el archivo');}
   };
@@ -1673,7 +1681,7 @@ function iCloudLoad(){
     r.onload=ev=>{
       try{
         const imp=JSON.parse(ev.target.result);
-        if(imp.projects){S=imp;if(!S.sel)S.sel=[];if(!S.carpetas)S.carpetas=[];if(!S.collapsedSecs)S.collapsedSecs={};if(!S.csTabs)S.csTabs={};if(S.basicCollapsed===undefined)S.basicCollapsed=false;if(S.globalLock===undefined)S.globalLock=false;save();render();updateSelUI();toast('☁️ Cargado desde iCloud ✓');}
+        if(imp.projects){S=imp;migrateState();save();render();updateSelUI();toast('☁️ Cargado desde iCloud ✓');}
         else toast('Archivo no reconocido');
       }catch(err){toast('Error al leer el archivo');}
     };
