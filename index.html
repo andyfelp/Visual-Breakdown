@@ -615,7 +615,7 @@ const TONOS=['Neutro','Tenso','Íntimo','Épico','Cómico','Onírico','Violento'
 const DEFAULT_SECS=['refs','camaras','luz_planta','cam_planta','foto','notas'];
 const KEY='vb5';
 
-let S={currentProj:null,currentEp:null,currentSeq:null,currentCarpetaSeq:null,sel:[],poolOn:true,lightMode:false,poolTab:'nav',currentCarpeta:null,carpetas:[],collapsedSecs:{},projects:[]};
+let S={currentProj:null,currentEp:null,currentSeq:null,currentCarpetaSeq:null,sel:[],poolOn:true,lightMode:false,poolTab:'nav',currentCarpeta:null,carpetas:[],collapsedSecs:{},basicCollapsed:false,projects:[]};
 let lbCtx=null;let nbSeqId=null;
 
 // ── STATE ──────────────────────────────────────────────────────────────────
@@ -625,7 +625,7 @@ function load(){
     if(r)S=JSON.parse(r);
     if(!S.projects)S.projects=[];
     if(!S.sel)S.sel=[];
-    if(!S.carpetas)S.carpetas=[];if(!S.collapsedSecs)S.collapsedSecs={};if(!S.csTabs)S.csTabs={};
+    if(!S.carpetas)S.carpetas=[];if(!S.collapsedSecs)S.collapsedSecs={};if(!S.csTabs)S.csTabs={};if(S.basicCollapsed===undefined)S.basicCollapsed=false;
     if(S.poolOn===undefined)S.poolOn=true;
     if(!S.poolTab)S.poolTab='nav';
     // migrate old section orders to new default
@@ -636,7 +636,7 @@ function load(){
     })));
     if(!S.projects.length)_addProj('Mi Proyecto');
   }catch(e){
-    S={currentProj:null,currentEp:null,currentSeq:null,currentCarpetaSeq:null,sel:[],poolOn:true,lightMode:false,poolTab:'nav',currentCarpeta:null,carpetas:[],collapsedSecs:{},projects:[]};
+    S={currentProj:null,currentEp:null,currentSeq:null,currentCarpetaSeq:null,sel:[],poolOn:true,lightMode:false,poolTab:'nav',currentCarpeta:null,carpetas:[],collapsedSecs:{},basicCollapsed:false,projects:[]};
     _addProj('Mi Proyecto');
   }
   if(S.lightMode)document.body.classList.add('light');
@@ -719,11 +719,15 @@ function cSeqActive(){
 
 // LOCK
 function toggleSeqBasic(){
+  S.basicCollapsed=!S.basicCollapsed;
+  save();applySeqBasicCollapse();
+}
+function applySeqBasicCollapse(){
   const el=document.getElementById('seq-basic-wrap');
   if(!el)return;
-  el.classList.toggle('seq-basic-collapsed');
+  el.classList.toggle('seq-basic-collapsed',!!S.basicCollapsed);
   const btn=document.getElementById('seq-basic-btn');
-  if(btn)btn.textContent=el.classList.contains('seq-basic-collapsed')?'▼':'▲';
+  if(btn)btn.textContent=S.basicCollapsed?'▼':'▲';
 }
 function toggleLock(){const s=cSeqActive();if(!s)return;s.locked=!s.locked;save();renderPool();renderMain();}
 function setWorkState(state){const s=cSeqActive();if(!s)return;s.workState=state;save();renderPool();}
@@ -826,7 +830,7 @@ function removeFromCarpeta(carpetaId,seqId,e){
 
 // POOL TOGGLE & TABS
 function togglePsec(key){
-  if(!S.collapsedSecs)S.collapsedSecs={};if(!S.csTabs)S.csTabs={};
+  if(!S.collapsedSecs)S.collapsedSecs={};if(!S.csTabs)S.csTabs={};if(S.basicCollapsed===undefined)S.basicCollapsed=false;
   S.collapsedSecs[key]=!S.collapsedSecs[key];
   save();applyCollapsedSecs();
 }
@@ -1196,7 +1200,7 @@ function renderMain(){
   const ep=cEp();if(!ep){inner.innerHTML=renderProjView(p);setTimeout(attachDrops,60);return;}
   const seq=cSeqActive();if(!seq){inner.innerHTML=renderEpView(ep);setTimeout(attachDrops,60);return;}
   inner.innerHTML=renderSeqView(seq,ep);
-  setTimeout(()=>{attachDrops();document.querySelectorAll('.section-block').forEach(b=>b.setAttribute('draggable','true'));initSectionDrag();},60);
+  setTimeout(()=>{attachDrops();document.querySelectorAll('.section-block').forEach(b=>b.setAttribute('draggable','true'));initSectionDrag();applySeqBasicCollapse();},60);
 }
 
 function renderProjView(p){
@@ -1535,7 +1539,7 @@ function handleImport(e){
   r.onload=ev=>{
     try{
       const imp=JSON.parse(ev.target.result);
-      if(imp.projects){S=imp;if(!S.sel)S.sel=[];if(!S.carpetas)S.carpetas=[];if(!S.collapsedSecs)S.collapsedSecs={};if(!S.csTabs)S.csTabs={};save();render();updateSelUI();toast('Importado ✓');}
+      if(imp.projects){S=imp;if(!S.sel)S.sel=[];if(!S.carpetas)S.carpetas=[];if(!S.collapsedSecs)S.collapsedSecs={};if(!S.csTabs)S.csTabs={};if(S.basicCollapsed===undefined)S.basicCollapsed=false;save();render();updateSelUI();toast('Importado ✓');}
       else toast('Formato no reconocido');
     }catch(err){toast('Error al leer el archivo');}
   };
@@ -1566,7 +1570,7 @@ function iCloudLoad(){
     r.onload=ev=>{
       try{
         const imp=JSON.parse(ev.target.result);
-        if(imp.projects){S=imp;if(!S.sel)S.sel=[];if(!S.carpetas)S.carpetas=[];if(!S.collapsedSecs)S.collapsedSecs={};if(!S.csTabs)S.csTabs={};save();render();updateSelUI();toast('☁️ Cargado desde iCloud ✓');}
+        if(imp.projects){S=imp;if(!S.sel)S.sel=[];if(!S.carpetas)S.carpetas=[];if(!S.collapsedSecs)S.collapsedSecs={};if(!S.csTabs)S.csTabs={};if(S.basicCollapsed===undefined)S.basicCollapsed=false;save();render();updateSelUI();toast('☁️ Cargado desde iCloud ✓');}
         else toast('Archivo no reconocido');
       }catch(err){toast('Error al leer el archivo');}
     };
