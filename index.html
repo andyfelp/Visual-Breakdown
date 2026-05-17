@@ -614,10 +614,13 @@ function load(){
   }
 }
 function save(){
-  pushUndo();
   try{localStorage.setItem(KEY,JSON.stringify(S));}
   catch(e){toast('⚠ Storage lleno — exporta backup');}
 }
+function saveWithUndo(){
+  pushUndo();save();
+}
+function qs(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
 
 // ── UNDO (2 steps) ────────────────────────────────────────────────────────
@@ -651,18 +654,31 @@ function findSeq(seqId){let r=null;S.projects.forEach(p=>p.episodes.forEach(e=>{
 function getSky(id){return SKY.find(s=>s.id===id)||SKY[0]}
 
 // ── NAVIGATION ────────────────────────────────────────────────────────────
-function swProj(id){S.currentProj=id;S.currentEp=null;S.currentSeq=null;S.currentCarpetaSeq=null;save();render();}
-function swEp(id){S.currentEp=id;S.currentSeq=null;S.currentCarpetaSeq=null;save();renderPool();renderMain();}
-function swSeq(id){S.currentSeq=id;S.currentCarpetaSeq=null;save();renderPool();renderMain();}
+function swProj(id){
+  S.currentProj=id;S.currentEp=null;S.currentSeq=null;S.currentCarpetaSeq=null;
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+  render();
+}
+function swEp(id){
+  S.currentEp=id;S.currentSeq=null;S.currentCarpetaSeq=null;
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+  renderPool();renderMain();
+}
+function swSeq(id){
+  S.currentSeq=id;S.currentCarpetaSeq=null;
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+  renderPool();renderMain();
+}
 function swSeqFrom(epId,seqId){
   const p=cProj();if(!p)return;
-  const ep=p.episodes.find(e=>e.id===epId);if(!ep)return;
   S.currentEp=epId;S.currentSeq=seqId;S.currentCarpetaSeq=null;
-  save();renderPool();renderMain();
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+  renderPool();renderMain();
 }
 function swCarpetaSeq(projId,epId,seqId){
   S.currentProj=projId;S.currentEp=epId;S.currentSeq=seqId;S.currentCarpetaSeq={projId,epId,seqId};
-  save();renderPool();renderMain();
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+  renderPool();renderMain();
 }
 
 // ── CRUD ──────────────────────────────────────────────────────────────────
@@ -719,28 +735,30 @@ function dupSequence(id){
 }
 
 // ── UPDATES ───────────────────────────────────────────────────────────────
-function updP(k,v){if(S.globalLock)return;const p=cProj();if(!p)return;p[k]=v;save();if(k==='name'){renderProjs();document.getElementById('proj-lbl').textContent=v;}if(k==='color')renderMain();}
-function updEp(k,v){if(S.globalLock)return;const e=cEp();if(!e)return;e[k]=v;save();if(k==='titulo')renderEps();}
+function updP(k,v){if(S.globalLock)return;const p=cProj();if(!p)return;p[k]=v;qs();if(k==='name'){renderProjs();document.getElementById('proj-lbl').textContent=v;}if(k==='color')renderMain();}
+function updEp(k,v){if(S.globalLock)return;const e=cEp();if(!e)return;e[k]=v;try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e2){}if(k==='titulo')renderEps();}
 function updS(k,v){
   if(S.globalLock)return;
   const s=cSeq();if(!s||s.locked)return;
-  s[k]=v;save();
+  s[k]=v;
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
   if(['nombre','int_ext','momento','dificultad'].includes(k))renderSeqs();
 }
 function updPlano(i,k,v){
   if(S.globalLock)return;
   const s=cSeq();if(!s||s.locked||!s.planos[i])return;
-  s.planos[i][k]=v;save();
+  s.planos[i][k]=v;
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
 }
 function addPlano(){
   if(S.globalLock)return;
   const s=cSeq();if(!s||s.locked)return;
-  s.planos.push(newPlano(s.planos.length+1));save();renderMain();
+  s.planos.push(newPlano(s.planos.length+1));saveWithUndo();renderMain();
 }
 function remPlano(i){
   if(S.globalLock)return;
   const s=cSeq();if(!s||s.locked||s.planos.length<=1)return;
-  s.planos.splice(i,1);save();renderMain();
+  s.planos.splice(i,1);saveWithUndo();renderMain();
 }
 function togglePlano(seqId,i){
   const r=findSeq(seqId);if(!r||!r.seq.planos[i])return;
@@ -857,7 +875,7 @@ function applySeqBasicCollapse(){
 }
 
 // ── POOL UI ───────────────────────────────────────────────────────────────
-function togglePool(){S.poolOn=!S.poolOn;save();applyPool();}
+function togglePool(){S.poolOn=!S.poolOn;qs();applyPool();}
 function applyPool(){
   const pool=document.getElementById('pool');const tog=document.getElementById('ptoggle');
   pool.classList.toggle('hidden',!S.poolOn);
@@ -874,7 +892,9 @@ function switchTab(tab){
 }
 function togglePsec(key){
   if(!S.collapsedSecs)S.collapsedSecs={};
-  S.collapsedSecs[key]=!S.collapsedSecs[key];save();applyPsec();
+  S.collapsedSecs[key]=!S.collapsedSecs[key];
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+  applyPsec();
 }
 function applyPsec(){
   ['proj','ep','seq'].forEach(key=>{
@@ -896,9 +916,10 @@ function togSel(epId,seqId,e){
   const p=cProj();
   if(isSel(epId,seqId))S.sel=S.sel.filter(s=>!(s.epId===epId&&s.seqId===seqId));
   else S.sel.push({epId,seqId,projId:p?p.id:''});
-  save();renderPool();updateSelUI();
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e2){}
+  renderPool();updateSelUI();
 }
-function clearSel(){S.sel=[];save();renderPool();updateSelUI();}
+function clearSel(){S.sel=[];try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}renderPool();updateSelUI();}
 function updateSelUI(){
   const n=S.sel.length;
   document.getElementById('sel-info').style.display=n?'block':'none';
@@ -909,7 +930,7 @@ function updateSelUI(){
 }
 
 // ── THEME ─────────────────────────────────────────────────────────────────
-function toggleTheme(){S.lightMode=!S.lightMode;document.body.classList.toggle('light',S.lightMode);save();}
+function toggleTheme(){S.lightMode=!S.lightMode;document.body.classList.toggle('light',S.lightMode);try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 
 // ── PANORAMIC ─────────────────────────────────────────────────────────────
 function togglePanoramic(){
@@ -947,7 +968,7 @@ function closePanoramic(){
 }
 function swPanSeq(projId,epId,seqId){
   S.currentProj=projId;S.currentEp=epId;S.currentSeq=seqId;S.currentCarpetaSeq=null;
-  save();closePanoramic();render();
+  qs();closePanoramic();render();
 }
 window.swPanSeq=swPanSeq;
 
@@ -971,13 +992,13 @@ function addSelToCarpeta(carpetaId){
     if(!c.refs.find(r=>r.seqId===sel.seqId)){c.refs.push({projId:sel.projId||p?.id||'',epId:sel.epId,seqId:sel.seqId});added++;}
   });
   c.refs.sort((a,b)=>{const ra=findSeq(a.seqId);const rb=findSeq(b.seqId);if(!ra||!rb)return 0;return parseFloat(ra.seq.num)-parseFloat(rb.seq.num);});
-  save();renderPool();toast(`${added} secuencia${added!==1?'s':''} añadida${added!==1?'s':''} ✓`);
+  qs();renderPool();toast(`${added} secuencia${added!==1?'s':''} añadida${added!==1?'s':''} ✓`);
 }
 function moveCarpetaRef(carpetaId,seqId,dir){
   const c=S.carpetas.find(c=>c.id===carpetaId);if(!c)return;
   const i=c.refs.findIndex(r=>r.seqId===seqId);if(i<0)return;
   const j=i+dir;if(j<0||j>=c.refs.length)return;
-  [c.refs[i],c.refs[j]]=[c.refs[j],c.refs[i]];save();renderPool();
+  [c.refs[i],c.refs[j]]=[c.refs[j],c.refs[i]];qs();renderPool();
 }
 function removeFromCarpeta(carpetaId,seqId,e){
   e.stopPropagation();const c=S.carpetas.find(c=>c.id===carpetaId);if(!c)return;
@@ -1056,9 +1077,26 @@ function toggleSkyDD(id){document.querySelectorAll('.sky-dropdown').forEach(d=>{
 function setSky(seqId,colorId){
   if(S.globalLock)return;
   const r=findSeq(seqId);if(!r||r.seq.locked)return;
-  r.seq.skyColor=colorId;save();
+  r.seq.skyColor=colorId;
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
   document.getElementById(`skydrop-${seqId}`)?.classList.remove('open');
-  renderPool();renderMain();
+  // Update color bar directly
+  const sky=getSky(colorId);
+  const bar=document.querySelector('.color-bar');
+  if(bar)bar.style.background=sky.bg||'var(--b1)';
+  // Update sky badge in header
+  const skyBadge=document.querySelector('.sky-badge-live');
+  if(skyBadge){skyBadge.style.background=sky.bg;skyBadge.style.color=sky.fg||'#fff';skyBadge.textContent=sky.label;}
+  // Update sky picker selected label
+  const skySel=document.querySelector(`#skydrop-${seqId}`)?.previousElementSibling;
+  if(skySel){
+    const swatch=skySel.querySelector('.sky-swatch');
+    const label=skySel.querySelector('.sky-label');
+    if(swatch)swatch.style.background=sky.bg||'';
+    if(label)label.textContent=sky.label||'Sin color';
+  }
+  // Update pool item sky bar
+  renderPool();
 }
 
 // ── UTILS ─────────────────────────────────────────────────────────────────
