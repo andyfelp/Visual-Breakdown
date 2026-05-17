@@ -771,7 +771,10 @@ window.addPlano=addPlano;window.remPlano=remPlano;window.updPlano=updPlano;windo
 // ── LOCK ──────────────────────────────────────────────────────────────────
 function toggleLock(){
   if(S.globalLock){toast('[L] Proyecto bloqueado');return;}
-  const s=cSeq();if(!s)return;s.locked=!s.locked;save();renderPool();renderMain();
+  const s=cSeq();if(!s)return;
+  s.locked=!s.locked;
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+  renderPool();renderMain();
 }
 function toggleGlobalLock(){
   S.globalLock=!S.globalLock;save();applyGlobalLock();renderMain();
@@ -788,7 +791,18 @@ function applyGlobalLock(){
 // ── WORK STATE ────────────────────────────────────────────────────────────
 function setWorkState(state){
   if(S.globalLock)return;
-  const s=cSeq();if(!s)return;s.workState=state;save();renderPool();renderMain();
+  const s=cSeq();if(!s)return;
+  s.workState=state;
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+  renderPool();
+  // Update state button dot directly without full re-render
+  const dot=document.querySelector('.state-btn .state-dot-inner');
+  if(dot){dot.style.background=WS_COLORS[state]||WS_COLORS.pending;dot.className='state-dot-inner'+(state==='done'?' done-cross':'');}
+  // Update active state in popover
+  document.querySelectorAll('.state-pop-item').forEach((el,i)=>{
+    el.classList.toggle('on',Object.keys(WS_COLORS)[i]===state);
+  });
+  closeStatePopovers();
 }
 function toggleStatePopover(e,id){e.stopPropagation();closeStatePopovers();document.getElementById(id)?.classList.toggle('open');}
 function closeStatePopovers(){document.querySelectorAll('.state-popover.open').forEach(p=>p.classList.remove('open'));}
@@ -801,9 +815,32 @@ function moveSec(key,dir){
   const i=order.indexOf(key);if(i<0)return;
   const j=i+dir;if(j<0||j>=order.length)return;
   [order[i],order[j]]=[order[j],order[i]];
+  // Apply to ALL sequences in project
   const p=cProj();
   if(p)p.episodes.forEach(ep=>ep.sequences.forEach(sq=>{sq.sectionOrder=[...order];}));
-  save();renderMain();
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+  // Move blocks in DOM directly — no full re-render
+  const wrap=document.querySelector('.sections-wrap');
+  if(!wrap){renderMain();return;}
+  const blocks=Array.from(wrap.querySelectorAll('.section-block'));
+  const blockA=blocks.find(b=>b.dataset.sec===order[j]); // block that was at j (now at i)
+  const blockB=blocks.find(b=>b.dataset.sec===order[i]); // block that was at i (now at j)
+  if(!blockA||!blockB){renderMain();return;}
+  // Swap in DOM
+  if(dir===-1){
+    wrap.insertBefore(blockA,blockB);
+  } else {
+    wrap.insertBefore(blockB,blockA);
+  }
+  // Update arrow disabled states for all blocks
+  const allBlocks=Array.from(wrap.querySelectorAll('.section-block'));
+  allBlocks.forEach((block,idx)=>{
+    const arrows=block.querySelectorAll('.sec-arrow');
+    if(arrows.length>=2){
+      arrows[0].disabled=idx===0||!!s.locked;
+      arrows[1].disabled=idx===allBlocks.length-1||!!s.locked;
+    }
+  });
 }
 
 // ── BASIC INFO COLLAPSE ───────────────────────────────────────────────────
@@ -1003,7 +1040,7 @@ function openNotebook(seqId){
   document.getElementById('nb-textarea').disabled=!!r.seq.locked||S.globalLock;
   document.getElementById('nb-modal').classList.add('open');
 }
-function closeNotebook(){document.getElementById('nb-modal').classList.remove('open');renderMain();}
+function closeNotebook(){document.getElementById('nb-modal').classList.remove('open');}
 function saveNbText(){if(!nbSeqId)return;const r=findSeq(nbSeqId);if(!r||r.seq.locked||S.globalLock)return;r.seq.notas_texto=document.getElementById('nb-textarea').value;save();}
 function nbFont(dir){nbFontSz=Math.max(12,Math.min(28,nbFontSz+dir*2));const ta=document.getElementById('nb-textarea');if(ta)ta.style.fontSize=nbFontSz+'px';}
 
