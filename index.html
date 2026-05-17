@@ -253,7 +253,7 @@ body.light .btn-green{background:#d0f0d8;color:#1a5a20;border-color:#80c090}
 .sec-arrow:disabled{opacity:.25;cursor:not-allowed}
 
 /* Collapsible basic info in seq */
-.seq-basic-collapsed .seq-basic-body{display:none}
+.seq-basic-body{transition:none}.seq-basic-collapsed .seq-basic-body{display:none}
 .seq-collapse-btn{font-family:'DM Mono',monospace;font-size:11px;color:var(--txt3);background:none;border:none;cursor:pointer;padding:2px 4px;line-height:1;transition:color .15s}
 .seq-collapse-btn:hover{color:var(--txt2)}
 
@@ -302,7 +302,7 @@ body.light .btn-green{background:#d0f0d8;color:#1a5a20;border-color:#80c090}
 .plano-num{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);min-width:20px}
 .plano-name{font-size:12px;font-weight:500;color:var(--txt);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .plano-desc-preview{font-size:11px;color:var(--txt3);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic}
-.plano-body{padding:.75rem .85rem;border-top:1px solid var(--b1)}
+.plano-body{padding:.75rem .85rem;border-top:1px solid var(--b1);overflow:hidden}
 .plano-body.hidden{display:none}
 
 /* Contact sheet */
@@ -808,7 +808,9 @@ function moveSec(key,dir){
 
 // ── BASIC INFO COLLAPSE ───────────────────────────────────────────────────
 function toggleSeqBasic(){
-  S.basicCollapsed=!S.basicCollapsed;save();applySeqBasicCollapse();
+  S.basicCollapsed=!S.basicCollapsed;
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+  applySeqBasicCollapse();
 }
 function applySeqBasicCollapse(){
   const el=document.getElementById('seq-basic-wrap');if(!el)return;
@@ -1137,10 +1139,10 @@ function renderMain(){
   const inner=document.getElementById('main-inner');
   const p=cProj();
   if(!p){inner.innerHTML=`<div class="nosel"><div style="font-size:18px;color:var(--gold)">Visual Breakdown</div><div>Crea un proyecto para empezar</div><button class="btn btn-gold" onclick="addProject()">＋ Nuevo proyecto</button></div>`;return;}
-  const ep=cEp();if(!ep){inner.innerHTML=projView(p);setTimeout(()=>{attachDrops();applyGlobalLock();},80);return;}
-  const seq=cSeq();if(!seq){inner.innerHTML=epView(ep);setTimeout(()=>{attachDrops();applyGlobalLock();},80);return;}
+  const ep=cEp();if(!ep){inner.innerHTML=projView(p);setTimeout(()=>{attachDrops();if(S.globalLock)applyGlobalLock();},80);return;}
+  const seq=cSeq();if(!seq){inner.innerHTML=epView(ep);setTimeout(()=>{attachDrops();if(S.globalLock)applyGlobalLock();},80);return;}
   inner.innerHTML=seqView(seq,ep);
-  setTimeout(()=>{attachDrops();applySeqBasicCollapse();applyGlobalLock();},80);
+  setTimeout(()=>{attachDrops();applySeqBasicCollapse();if(S.globalLock)applyGlobalLock();},80);
 }
 
 function projView(p){
@@ -1247,8 +1249,19 @@ function toggleEpInfo(epId){
   if(btn)btn.textContent=el.classList.contains('ep-info-collapsed')?'▼':'▲';
 }
 function setCsTab(epId,tab){
+  if(!S.csTabs)S.csTabs={};
+  S.csTabs[epId]=tab;
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+  // Update only the tab buttons and grid without full re-render
+  document.querySelectorAll('.cs-tab').forEach(btn=>{
+    btn.classList.toggle('on',btn.textContent.toLowerCase().startsWith(tab==='refs'?'ref':tab==='luz'?'luz':'cám'));
+  });
+  // Rebuild just the grid content
+  const ep=cEp();if(!ep)return;
+  const gridWrap=document.querySelector('.cs-tab-bar')?.nextElementSibling;
+  if(!gridWrap){renderMain();return;}
+  // full re-render only for the grid area — preserve ep-info state
   const wasCollapsed=document.getElementById(`ep-info-${epId}`)?.classList.contains('ep-info-collapsed');
-  if(!S.csTabs)S.csTabs={};S.csTabs[epId]=tab;
   renderMain();
   if(wasCollapsed){
     const el=document.getElementById(`ep-info-${epId}`);
