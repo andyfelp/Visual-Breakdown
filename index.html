@@ -1225,7 +1225,7 @@ function renderMain(){
   const ep=cEp();if(!ep){inner.innerHTML=projView(p);setTimeout(()=>{attachDrops();if(S.globalLock)applyGlobalLock();},80);return;}
   const seq=cSeq();if(!seq){inner.innerHTML=epView(ep);setTimeout(()=>{attachDrops();if(S.globalLock)applyGlobalLock();},80);return;}
   inner.innerHTML=seqView(seq,ep);
-  setTimeout(()=>{attachDrops();applySeqBasicCollapse();if(S.globalLock)applyGlobalLock();},80);
+  setTimeout(()=>{attachDrops();if(S.globalLock)applyGlobalLock();},80);
 }
 
 function projView(p){
@@ -1432,9 +1432,9 @@ function seqView(seq,ep){
     ${locked?`<div class="locked-banner">[L] Bloqueada — pulsa el candado para editar</div>`:''}
     <div class="cbody">
       <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:4px">
-        <button class="seq-collapse-btn" id="seq-basic-btn" onclick="toggleSeqBasic()">▲</button>
+        <button class="seq-collapse-btn" id="seq-basic-btn" onclick="toggleSeqBasic()">${S.basicCollapsed?'▼':'▲'}</button>
       </div>
-      <div id="seq-basic-wrap">
+      <div id="seq-basic-wrap" class="${S.basicCollapsed?'seq-basic-collapsed':''}">
         <div class="seq-basic-body">
           <div class="g2" style="margin-bottom:10px">
             <div class="f"><label>Nombre</label><input value="${esc(seq.nombre)}" oninput="updS('nombre',this.value)" ${locked?'disabled':''}></div>
