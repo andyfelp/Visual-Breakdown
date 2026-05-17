@@ -203,8 +203,7 @@ body.light .btn-green{background:#d0f0d8;color:#1a5a20;border-color:#80c090}
 
 /* ── MAIN ────────────────────────────────────────────────────────────────── */
 .main{flex:1;overflow-y:auto;padding:1.25rem;min-width:0}
-.main-inner{padding-bottom:1.5rem;animation:fadeIn .15s ease}
-@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.main-inner{padding-bottom:1.5rem}
 .nosel{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:55vh;color:var(--txt3);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.06em;gap:1rem;text-align:center}
 
 /* Cards */
@@ -1435,7 +1434,7 @@ function seqView(seq,ep){
         <button class="seq-collapse-btn" id="seq-basic-btn" onclick="toggleSeqBasic()">${S.basicCollapsed?'▼':'▲'}</button>
       </div>
       <div id="seq-basic-wrap" class="${S.basicCollapsed?'seq-basic-collapsed':''}">
-        <div class="seq-basic-body">
+        <div class="seq-basic-body" style="${S.basicCollapsed?'display:none':''}">
           <div class="g2" style="margin-bottom:10px">
             <div class="f"><label>Nombre</label><input value="${esc(seq.nombre)}" oninput="updS('nombre',this.value)" ${locked?'disabled':''}></div>
             <div class="f"><label>Localización</label><input value="${esc(seq.loc)}" placeholder="Nombre del espacio" oninput="updS('loc',this.value)" ${locked?'disabled':''}></div>
