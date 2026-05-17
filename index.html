@@ -203,7 +203,8 @@ body.light .btn-green{background:#d0f0d8;color:#1a5a20;border-color:#80c090}
 
 /* ── MAIN ────────────────────────────────────────────────────────────────── */
 .main{flex:1;overflow-y:auto;padding:1.25rem;min-width:0}
-.main-inner{padding-bottom:1.5rem}
+.main-inner{padding-bottom:1.5rem;animation:fadeIn .15s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .nosel{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:55vh;color:var(--txt3);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.06em;gap:1rem;text-align:center}
 
 /* Cards */
@@ -660,25 +661,31 @@ function swProj(id){
   render();
 }
 function swEp(id){
+  if(S.currentEp===id&&!S.currentSeq)return;
   S.currentEp=id;S.currentSeq=null;S.currentCarpetaSeq=null;
   try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
   renderPool();renderMain();
+  document.getElementById('main').scrollTop=0;
 }
 function swSeq(id){
+  if(S.currentSeq===id)return;
   S.currentSeq=id;S.currentCarpetaSeq=null;
   try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
   renderPool();renderMain();
+  document.getElementById('main').scrollTop=0;
 }
 function swSeqFrom(epId,seqId){
   const p=cProj();if(!p)return;
   S.currentEp=epId;S.currentSeq=seqId;S.currentCarpetaSeq=null;
   try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
   renderPool();renderMain();
+  document.getElementById('main').scrollTop=0;
 }
 function swCarpetaSeq(projId,epId,seqId){
   S.currentProj=projId;S.currentEp=epId;S.currentSeq=seqId;S.currentCarpetaSeq={projId,epId,seqId};
   try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
   renderPool();renderMain();
+  document.getElementById('main').scrollTop=0;
 }
 
 // ── CRUD ──────────────────────────────────────────────────────────────────
@@ -1211,6 +1218,7 @@ function renderCarpetas(){
 
 // ── MAIN RENDER ───────────────────────────────────────────────────────────
 function renderMain(){
+  const mainEl=document.getElementById('main');
   const inner=document.getElementById('main-inner');
   const p=cProj();
   if(!p){inner.innerHTML=`<div class="nosel"><div style="font-size:18px;color:var(--gold)">Visual Breakdown</div><div>Crea un proyecto para empezar</div><button class="btn btn-gold" onclick="addProject()">＋ Nuevo proyecto</button></div>`;return;}
