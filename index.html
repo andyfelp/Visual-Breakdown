@@ -876,6 +876,8 @@ function toggleSeqBasic(){
 function applySeqBasicCollapse(){
   const el=document.getElementById('seq-basic-wrap');if(!el)return;
   el.classList.toggle('seq-basic-collapsed',!!S.basicCollapsed);
+  const body=el.querySelector('.seq-basic-body');
+  if(body)body.style.display=S.basicCollapsed?'none':'';
   const btn=document.getElementById('seq-basic-btn');
   if(btn)btn.textContent=S.basicCollapsed?'▼':'▲';
 }
