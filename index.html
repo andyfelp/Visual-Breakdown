@@ -744,7 +744,27 @@ function remPlano(i){
 }
 function togglePlano(seqId,i){
   const r=findSeq(seqId);if(!r||!r.seq.planos[i])return;
-  r.seq.planos[i].collapsed=!r.seq.planos[i].collapsed;save();renderMain();
+  const p=r.seq.planos[i];
+  p.collapsed=!p.collapsed;
+  save();
+  // Direct DOM update — avoid full re-render flash
+  const block=document.querySelector(`[data-plano-id="${seqId}-${i}"]`);
+  if(block){
+    const body=block.querySelector('.plano-body');
+    const arr=block.querySelector('.plano-arr');
+    if(body)body.classList.toggle('hidden',p.collapsed);
+    if(arr)arr.textContent=p.collapsed?'▼':'▲';
+    // Update head content if there's a description preview to show/hide
+    const preview=block.querySelector('.plano-desc-preview');
+    if(p.collapsed&&p.descripcion&&!preview){
+      // needs re-render to show preview — do it without flash using requestAnimationFrame
+      requestAnimationFrame(()=>renderMain());
+    } else if(!p.collapsed&&preview){
+      requestAnimationFrame(()=>renderMain());
+    }
+  } else {
+    renderMain();
+  }
 }
 window.addPlano=addPlano;window.remPlano=remPlano;window.updPlano=updPlano;window.togglePlano=togglePlano;
 
@@ -1254,14 +1274,14 @@ function buildSection(key,seq,idx,total){
       const badges=`<span class="plano-badge">${p.tipo||'PM'}</span><span class="plano-badge">Cam ${p.camara||'A'}</span><span class="plano-badge">${p.soporte||'Trípode'}</span>`;
       const imgThumbs=(p.images||[]).map((img,ii)=>`<div class="iwrap" style="width:80px;height:56px" onclick="planoImgOpen('${seq.id}',${i},${ii})"><img src="${img.data}" alt="">${!locked?`<button class="idel" onclick="planoImgDel('${seq.id}',${i},${ii},event)">✕</button>`:''}</div>`).join('');
       const imgZone=locked?'':`<div class="dzone" onclick="document.getElementById('pfi-${seq.id}-${i}').click()" style="margin-top:6px"><input type="file" id="pfi-${seq.id}-${i}" accept="image/*" multiple style="display:none" onchange="planoImgAdd(this.files,'${seq.id}',${i})"><span>＋ Fotos de referencia</span></div>`;
-      return`<div class="plano-block">
+      return`<div class="plano-block" data-plano-id="${seq.id}-${i}">
         <div class="plano-head" onclick="togglePlano('${seq.id}',${i})">
           ${p.collapsed
             ?`<span class="plano-num">${i+1}</span><span class="plano-name">${esc(p.nombre||`Plano ${i+1}`)}</span>${badges}${p.descripcion?`<span class="plano-desc-preview">${esc(p.descripcion)}</span>`:''}`
             :`<span class="plano-num">${i+1}</span><span class="plano-name">${esc(p.nombre||`Plano ${i+1}`)}</span>${badges}`
           }
           ${!locked?`<button class="btn btn-red bico" style="font-size:9px;padding:1px 5px" onclick="event.stopPropagation();remPlano(${i})">✕</button>`:''}
-          <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--txt3)">${p.collapsed?'▼':'▲'}</span>
+          <span class="plano-arr" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--txt3)">${p.collapsed?'▼':'▲'}</span>
         </div>
         <div class="plano-body${p.collapsed?' hidden':''}">
           <div class="g3">
