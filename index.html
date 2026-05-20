@@ -366,6 +366,12 @@ body.light .btn-green{background:#d0f0d8;color:#1a5a20;border-color:#80c090}
 /* Toast */
 .toast{position:fixed;bottom:calc(1.5rem + var(--safe-b));right:1rem;background:var(--s3);border:1px solid var(--b2);color:var(--txt);font-family:'DM Mono',monospace;font-size:10px;padding:8px 16px;border-radius:var(--r);opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;z-index:9999}
 .toast.show{opacity:1;transform:translateY(0)}
+
+/* STORAGE INDICATOR */
+.storage-bar-wrap{display:flex;align-items:center;gap:6px;padding:.4rem .75rem;border-top:1px solid var(--b1);flex-shrink:0}
+.storage-bar-bg{flex:1;height:3px;background:var(--b1);border-radius:2px;overflow:hidden}
+.storage-bar-fill{height:100%;border-radius:2px;transition:width .3s,background .3s}
+.storage-lbl{font-family:'DM Mono',monospace;font-size:8px;color:var(--txt3);white-space:nowrap;min-width:52px;text-align:right}
 </style>
 </head>
 <body>
@@ -461,6 +467,10 @@ body.light .btn-green{background:#d0f0d8;color:#1a5a20;border-color:#80c090}
       </div>
     </div>
 
+    <div class="storage-bar-wrap" id="storage-wrap">
+      <div class="storage-bar-bg"><div class="storage-bar-fill" id="storage-fill"></div></div>
+      <span class="storage-lbl" id="storage-lbl">— MB</span>
+    </div>
     <div class="pool-footer">
       <span class="footer-sig">Andy Pulido</span>
       <button class="circle-btn" id="pan-btn" onclick="togglePanoramic()" title="Vista panorámica" style="width:28px;height:28px;font-size:13px">⊞</button>
@@ -566,6 +576,77 @@ const WS_COLORS={pending:'#303030',working:'#1e1e1e',ready:'#0d1f2d',done:'#111'
 const WS_LABELS={pending:'Pendiente',working:'En proceso',ready:'Listo',done:'Rodado',clave:'Clave'};
 const KEY='vb5';
 
+
+// ── STORAGE INDICATOR ─────────────────────────────────────────────────────
+function updateStorageBar(){
+  try{
+    const used=new Blob([localStorage.getItem(KEY)||'']).size;
+    const limit=50*1024*1024; // 50MB Safari limit
+    const pct=Math.min(100,Math.round(used/limit*100));
+    const mb=(used/1024/1024).toFixed(1);
+    const fill=document.getElementById('storage-fill');
+    const lbl=document.getElementById('storage-lbl');
+    if(!fill||!lbl)return;
+    fill.style.width=pct+'%';
+    fill.style.background=pct>85?'#e05050':pct>60?'#e09040':'var(--gold2)';
+    lbl.style.color=pct>85?'var(--alta-t)':pct>60?'var(--media-t)':'var(--txt3)';
+    lbl.textContent=mb+' MB';
+    lbl.title=pct+'% usado ('+mb+' MB de ~50 MB)';
+  }catch(e){}
+}
+
+// ── IMAGE COMPRESSION ─────────────────────────────────────────────────────
+function compressImage(dataUrl, maxPx, quality, cb){
+  const img=new Image();
+  img.onload=()=>{
+    let w=img.width,h=img.height;
+    if(w>maxPx||h>maxPx){
+      if(w>h){h=Math.round(h*maxPx/w);w=maxPx;}
+      else{w=Math.round(w*maxPx/h);h=maxPx;}
+    }
+    const c=document.createElement('canvas');
+    c.width=w;c.height=h;
+    c.getContext('2d').drawImage(img,0,0,w,h);
+    cb(c.toDataURL('image/jpeg',quality));
+  };
+  img.src=dataUrl;
+}
+function compressFiles(files, cb){
+  const arr=Array.from(files);
+  if(!arr.length){cb([]);return;}
+  let done=0;const res=new Array(arr.length);
+  arr.forEach((f,i)=>{
+    const r=new FileReader();
+    r.onload=ev=>{
+      compressImage(ev.target.result,1200,0.75,compressed=>{
+        res[i]={data:compressed,caption:f.name.replace(/\.[^.]+$/,'')};
+        if(++done===arr.length)cb(res);
+      });
+    };
+    r.readAsDataURL(f);
+  });
+}
+function migrateImages(cb){
+  // Compress all existing images in state
+  const allImgs=[];
+  (S.projects||[]).forEach(p=>(p.episodes||[]).forEach(e=>(e.sequences||[]).forEach(seq=>{
+    (seq.images||[]).forEach((img,i)=>allImgs.push({obj:seq.images,i,img}));
+    (seq.luz_images||[]).forEach((img,i)=>allImgs.push({obj:seq.luz_images,i,img}));
+    (seq.camara_planta_images||[]).forEach((img,i)=>allImgs.push({obj:seq.camara_planta_images,i,img}));
+    (seq.planos||[]).forEach(p=>(p.images||[]).forEach((img,i)=>allImgs.push({obj:p.images,i,img})));
+    (e.images||[]).forEach((img,i)=>allImgs.push({obj:e.images,i,img}));
+  })));
+  if(!allImgs.length){cb(0);return;}
+  let done=0;const total=allImgs.length;
+  allImgs.forEach(({obj,i,img})=>{
+    // Skip if already small (already compressed or tiny)
+    if(!img.data||img.data.length<50000){done++;if(done===total)cb(total);return;}
+    compressImage(img.data,1200,0.75,compressed=>{
+      obj[i]={...img,data:compressed};
+      done++;if(done===total)cb(total);
+    });
+  });
+}
 // ── STATE ─────────────────────────────────────────────────────────────────
 let S={
   currentProj:null,currentEp:null,currentSeq:null,currentCarpetaSeq:null,
@@ -614,7 +695,7 @@ function load(){
   }
 }
 function save(){
-  try{localStorage.setItem(KEY,JSON.stringify(S));}
+  try{localStorage.setItem(KEY,JSON.stringify(S));updateStorageBar();}
   catch(e){toast('⚠ Storage lleno — exporta backup');}
 }
 function saveWithUndo(){
@@ -1028,13 +1109,13 @@ function seqMatches(seq,q){
 // ── IMAGES ────────────────────────────────────────────────────────────────
 function readFiles(files,cb){const arr=Array.from(files);if(!arr.length){cb([]);return;}let done=0;const res=new Array(arr.length);arr.forEach((f,i)=>{const r=new FileReader();r.onload=ev=>{res[i]={data:ev.target.result,caption:f.name.replace(/\.[^.]+$/,'')};if(++done===arr.length)cb(res);};r.readAsDataURL(f);});}
 function getImgArr(gid){const s=cSeq();if(!s)return null;const t=gid.split('__')[1];return t==='luz'?s.luz_images:t==='cam'?s.camara_planta_images:s.images;}
-window.seqImgAdd=function(files,gid){if(S.globalLock)return;const s=cSeq();if(!s||s.locked)return;const arr=getImgArr(gid);if(!arr)return;readFiles(files,imgs=>{arr.push(...imgs);save();renderMain();});};
+window.seqImgAdd=function(files,gid){if(S.globalLock)return;const s=cSeq();if(!s||s.locked)return;const arr=getImgArr(gid);if(!arr)return;compressFiles(files,imgs=>{arr.push(...imgs);save();renderMain();updateStorageBar();});};
 window.seqImgDel=function(idx,gid){if(S.globalLock)return;const s=cSeq();if(!s||s.locked)return;const arr=getImgArr(gid);if(!arr)return;arr.splice(idx,1);save();renderMain();};
 window.seqImgOpen=function(idx,gid){const arr=getImgArr(gid);if(!arr)return;lbCtx={arr,idx};lbOpen();};
-window.epImgAdd=function(files){if(S.globalLock)return;const ep=cEp();if(!ep)return;readFiles(files,imgs=>{ep.images.push(...imgs);save();renderMain();});};
+window.epImgAdd=function(files){if(S.globalLock)return;const ep=cEp();if(!ep)return;compressFiles(files,imgs=>{ep.images.push(...imgs);save();renderMain();updateStorageBar();});};
 window.epImgDel=function(idx){if(S.globalLock)return;const ep=cEp();if(!ep)return;ep.images.splice(idx,1);save();renderMain();};
 window.epImgOpen=function(idx){const ep=cEp();if(!ep)return;lbCtx={arr:ep.images,idx};lbOpen();};
-window.planoImgAdd=function(files,seqId,i){if(S.globalLock)return;const r=findSeq(seqId);if(!r||r.seq.locked)return;readFiles(files,imgs=>{if(!r.seq.planos[i].images)r.seq.planos[i].images=[];r.seq.planos[i].images.push(...imgs);save();renderMain();});};
+window.planoImgAdd=function(files,seqId,i){if(S.globalLock)return;const r=findSeq(seqId);if(!r||r.seq.locked)return;compressFiles(files,imgs=>{if(!r.seq.planos[i].images)r.seq.planos[i].images=[];r.seq.planos[i].images.push(...imgs);save();renderMain();updateStorageBar();});};
 window.planoImgDel=function(seqId,i,ii,e){e.stopPropagation();if(S.globalLock)return;const r=findSeq(seqId);if(!r||r.seq.locked)return;r.seq.planos[i].images.splice(ii,1);save();renderMain();};
 window.planoImgOpen=function(seqId,i,ii){const r=findSeq(seqId);if(!r)return;lbCtx={arr:r.seq.planos[i].images,idx:ii};lbOpen();};
 window.csImgOpen=function(epId,seqId,type,idx){let ep=null;S.projects.forEach(p=>{const e=p.episodes.find(e=>e.id===epId);if(e)ep=e;});if(!ep)return;const seq=ep.sequences.find(s=>s.id===seqId);if(!seq)return;const arr=type==='luz'?seq.luz_images:type==='cam'?seq.camara_planta_images:seq.images;lbCtx={arr,idx};lbOpen();};
@@ -1519,7 +1600,14 @@ function handleImport(e){
   r.onload=ev=>{
     try{
       const imp=JSON.parse(ev.target.result);
-      if(imp.projects){S=imp;migrate();save();render();updateSelUI();toast('Importado ✓');}
+      if(imp.projects){
+        S=imp;migrate();
+        toast('Comprimiendo imágenes…');
+        migrateImages(n=>{
+          save();render();updateSelUI();updateStorageBar();
+          toast(n>0?`Importado ✓ — ${n} imágenes comprimidas`:'Importado ✓');
+        });
+      }
       else toast('Formato no reconocido');
     }catch(err){toast('Error al leer el archivo');}
   };
@@ -1536,7 +1624,14 @@ function iCloudLoad(){
     r.onload=ev=>{
       try{
         const imp=JSON.parse(ev.target.result);
-        if(imp.projects){S=imp;migrate();save();render();updateSelUI();toast('☁️ Cargado desde iCloud ✓');}
+        if(imp.projects){
+          S=imp;migrate();
+          toast('Comprimiendo imágenes…');
+          migrateImages(n=>{
+            save();render();updateSelUI();updateStorageBar();
+            toast(n>0?`☁️ Cargado ✓ — ${n} imágenes comprimidas`:'☁️ Cargado desde iCloud ✓');
+          });
+        }
         else toast('Archivo no reconocido');
       }catch(err){toast('Error al leer el archivo');}
     };
@@ -1563,7 +1658,7 @@ document.addEventListener('keydown',e=>{
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{});});}
 
 // ── INIT ──────────────────────────────────────────────────────────────────
-load();render();applyGlobalLock();
+load();render();applyGlobalLock();updateStorageBar();
 </script>
 </body>
 </html>
