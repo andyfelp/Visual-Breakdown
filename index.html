@@ -826,8 +826,8 @@ function load(){
     let main=r?JSON.parse(r):null;
     let auto=ra?JSON.parse(ra):null;
     // Use whichever is more recent
-    const mainTs=main?.(main._save_ts||0):0;
-    const autoTs=auto?.(auto._autosave_ts||0):0;
+    const mainTs=main?(main._save_ts||0):0;
+    const autoTs=auto?(auto._autosave_ts||0):0;
     if(auto&&autoTs>mainTs){
       delete auto._autosave_ts;S=auto;
     } else if(main){
