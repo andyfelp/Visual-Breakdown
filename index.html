@@ -825,12 +825,15 @@ function load(){
     const ra=localStorage.getItem(AUTOSAVE_KEY);
     let main=r?JSON.parse(r):null;
     let auto=ra?JSON.parse(ra):null;
-    // Use autosave if it's newer than main save
-    if(auto&&auto._autosave_ts&&(!main||auto._autosave_ts>(main._autosave_ts||0))){
+    // Use whichever is more recent
+    const mainTs=main?.(main._save_ts||0):0;
+    const autoTs=auto?.(auto._autosave_ts||0):0;
+    if(auto&&autoTs>mainTs){
       delete auto._autosave_ts;S=auto;
     } else if(main){
-      delete main._autosave_ts;S=main;
+      delete main._save_ts;S=main;
     }
+    delete S._save_ts;delete S._autosave_ts;
     if(!S.projects||!S.projects.length){S.projects=[];addProj('Mi Proyecto');}
     migrate();
   }catch(e){
@@ -839,7 +842,11 @@ function load(){
   }
 }
 function save(){
-  try{localStorage.setItem(KEY,JSON.stringify(S));updateStorageBar();}
+  try{
+    const snapshot={...S,_save_ts:Date.now()};
+    localStorage.setItem(KEY,JSON.stringify(snapshot));
+    updateStorageBar();
+  }
   catch(e){toast('⚠ Storage lleno — exporta backup');}
 }
 function saveWithUndo(){
