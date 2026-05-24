@@ -617,12 +617,13 @@ function updateStorageBar(){
     const mb=(used/1024/1024).toFixed(1);
     const fill=document.getElementById('storage-fill');
     const lbl=document.getElementById('storage-lbl');
-    if(!fill||!lbl)return;
-    fill.style.width=pct+'%';
+    if(!fill||!lbl){setTimeout(updateStorageBar,500);return;}
+    fill.style.width=Math.max(1,pct)+'%';
     fill.style.background=pct>85?'#e05050':pct>60?'#e09040':'var(--gold2)';
     lbl.style.color=pct>85?'var(--alta-t)':pct>60?'var(--media-t)':'var(--txt3)';
     lbl.textContent=mb+' MB';
     lbl.title=pct+'% usado ('+mb+' MB de ~50 MB)';
+    lbl.style.display='block';
   }catch(e){}
 }
 
@@ -1454,6 +1455,7 @@ function renderCarpetas(){
 function renderMain(){
   const mainEl=document.getElementById('main');
   const inner=document.getElementById('main-inner');
+  setTimeout(updateStorageBar,200);
   const p=cProj();
   if(!p){inner.innerHTML=`<div class="nosel"><div style="font-size:18px;color:var(--gold)">Visual Breakdown</div><div>Crea un proyecto para empezar</div><button class="btn btn-gold" onclick="addProject()">＋ Nuevo proyecto</button></div>`;return;}
   const ep=cEp();if(!ep){inner.innerHTML=projView(p);setTimeout(()=>{attachDrops();if(S.globalLock)applyGlobalLock();},80);return;}
@@ -1810,7 +1812,7 @@ document.addEventListener('keydown',e=>{
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{});});}
 
 // ── INIT ──────────────────────────────────────────────────────────────────
-load();render();applyGlobalLock();updateStorageBar();setInterval(autosave,5*60*1000);
+load();render();applyGlobalLock();setTimeout(updateStorageBar,300);setInterval(updateStorageBar,10000);setInterval(autosave,5*60*1000);
 </script>
 </body>
 </html>
