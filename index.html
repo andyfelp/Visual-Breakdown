@@ -374,7 +374,7 @@ body.light .btn-green{background:#d0f0d8;color:#1a5a20;border-color:#80c090}
 .storage-lbl{font-family:'DM Mono',monospace;font-size:8px;color:var(--txt3);white-space:nowrap;min-width:52px;text-align:right}
 
 /* POOL ITEM DRAG REORDER */
-.pitem{touch-action:none}
+.pitem{}
 .pitem.dragging-seq{opacity:.4;background:var(--s3)!important}
 .pitem.drag-over-seq-top{border-top:2px solid var(--gold)}
 .pitem.drag-over-seq-bot{border-bottom:2px solid var(--gold)}
@@ -703,19 +703,26 @@ function initSeqDrag(){
   const list=document.getElementById('plist-seq');
   if(!list)return;
   let dragIdx=null;
+  let longPressTimer=null;
+  let isDragging=false;
   const items=list.querySelectorAll('.pitem');
   items.forEach((el,i)=>{
-    // Touch drag
-    let startY=0,startIdx=i;
+    // Touch — long press (500ms) to activate drag, otherwise normal scroll
     el.addEventListener('touchstart',e=>{
       if(S.globalLock)return;
-      startY=e.touches[0].clientY;
-      dragIdx=i;
-      el.classList.add('dragging-seq');
-      e.stopPropagation();
+      const startY=e.touches[0].clientY;
+      longPressTimer=setTimeout(()=>{
+        isDragging=true;dragIdx=i;
+        el.classList.add('dragging-seq');
+        if(navigator.vibrate)navigator.vibrate(30);
+      },500);
     },{passive:true});
     el.addEventListener('touchmove',e=>{
-      if(dragIdx===null)return;
+      if(!isDragging){
+        // Not dragging — cancel long press and allow normal scroll
+        clearTimeout(longPressTimer);longPressTimer=null;
+        return;
+      }
       e.preventDefault();
       const y=e.touches[0].clientY;
       const all=Array.from(list.querySelectorAll('.pitem'));
@@ -726,12 +733,12 @@ function initSeqDrag(){
       });
       if(target&&target!==el){
         const r=target.getBoundingClientRect();
-        const mid=r.top+r.height/2;
-        target.classList.add(y<mid?'drag-over-seq-top':'drag-over-seq-bot');
+        target.classList.add(e.touches[0].clientY<r.top+r.height/2?'drag-over-seq-top':'drag-over-seq-bot');
       }
     },{passive:false});
     el.addEventListener('touchend',e=>{
-      if(dragIdx===null)return;
+      clearTimeout(longPressTimer);longPressTimer=null;
+      if(!isDragging){isDragging=false;dragIdx=null;return;}
       el.classList.remove('dragging-seq');
       const all=Array.from(list.querySelectorAll('.pitem'));
       all.forEach((it,ti)=>{
@@ -743,32 +750,38 @@ function initSeqDrag(){
           moveSeqInEp(dragIdx,ti>dragIdx?ti:ti+1);
         }
       });
-      dragIdx=null;
+      isDragging=false;dragIdx=null;
     },{passive:true});
-    // Mouse drag (Mac)
+    el.addEventListener('touchcancel',()=>{
+      clearTimeout(longPressTimer);longPressTimer=null;
+      el.classList.remove('dragging-seq');
+      list.querySelectorAll('.pitem').forEach(it=>it.classList.remove('drag-over-seq-top','drag-over-seq-bot'));
+      isDragging=false;dragIdx=null;
+    });
+    // Mouse drag (Mac) — unchanged
     el.setAttribute('draggable','true');
     el.addEventListener('dragstart',e=>{
       if(S.globalLock)return;
-      dragIdx=i;el.classList.add('dragging-seq');
+      dragIdx=i;isDragging=true;el.classList.add('dragging-seq');
       e.dataTransfer.effectAllowed='move';
     });
     el.addEventListener('dragend',()=>{
       el.classList.remove('dragging-seq');
       list.querySelectorAll('.pitem').forEach(it=>it.classList.remove('drag-over-seq-top','drag-over-seq-bot'));
-      dragIdx=null;
+      isDragging=false;dragIdx=null;
     });
     el.addEventListener('dragover',e=>{
-      e.preventDefault();if(dragIdx===null||dragIdx===i)return;
+      e.preventDefault();if(!isDragging||dragIdx===i)return;
       list.querySelectorAll('.pitem').forEach(it=>it.classList.remove('drag-over-seq-top','drag-over-seq-bot'));
       const r=el.getBoundingClientRect();
       el.classList.add(e.clientY<r.top+r.height/2?'drag-over-seq-top':'drag-over-seq-bot');
     });
     el.addEventListener('drop',e=>{
-      e.preventDefault();if(dragIdx===null||dragIdx===i)return;
+      e.preventDefault();if(!isDragging||dragIdx===i)return;
       const top=el.classList.contains('drag-over-seq-top');
       el.classList.remove('drag-over-seq-top','drag-over-seq-bot');
       moveSeqInEp(dragIdx,top?(i>dragIdx?i-1:i):(i>dragIdx?i:i+1));
-      dragIdx=null;
+      isDragging=false;dragIdx=null;
     });
   });
 }
