@@ -417,6 +417,7 @@ body.light .state-btn{background:var(--s2);border-color:var(--b2)}
     <button class="circle-btn" id="theme-btn" onclick="toggleTheme()" title="Tema">
       <div class="theme-dot" id="theme-dot"></div>
     </button>
+    <button class="circle-btn" onclick="iCloudSave()" title="Guardar en iCloud Drive" style="width:26px;height:26px;font-size:11px">☁️</button>
     <div class="submenu-wrap">
       <button class="btn" onclick="toggleSubmenu()">··· <span style="font-size:9px">▾</span></button>
       <div class="submenu" id="submenu">
@@ -850,7 +851,15 @@ function load(){
       delete main._save_ts;S=main;
     }
     delete S._save_ts;delete S._autosave_ts;
-    if(!S.projects||!S.projects.length){S.projects=[];addProj('Mi Proyecto');}
+    if(!S.projects||!S.projects.length){
+      S.projects=[];addProj('Mi Proyecto');
+      // Show recovery hint if this looks like a fresh/wiped state
+      setTimeout(()=>{
+        if(confirm('⚠ No se encontraron datos guardados.\n\n¿Quieres cargar tu último backup de iCloud Drive?')){
+          iCloudLoad();
+        }
+      },800);
+    }
     migrate();
   }catch(e){
     S={currentProj:null,currentEp:null,currentSeq:null,currentCarpetaSeq:null,sel:[],poolOn:true,lightMode:false,poolTab:'nav',currentCarpeta:null,carpetas:[],collapsedSecs:{},csTabs:{},basicCollapsed:false,globalLock:false,projects:[]};
@@ -1444,7 +1453,7 @@ function renderCarpetas(){
   document.getElementById('plist-carp').innerHTML=S.carpetas.map(c=>
     `<div class="carpeta-item${c.id===S.currentCarpeta?' active':''}" onclick="swCarpeta('${c.id}')">
       <span style="font-size:12px">📁</span>
-      <span class="carpeta-name">${esc(c.name)}</span>
+      <span class="carpeta-name" ondblclick="event.stopPropagation();renameCarpeta('${c.id}',this)" title="Doble tap para renombrar">${esc(c.name)}</span>
       <span class="carpeta-count">${c.refs.length}</span>
       ${hasSel?`<button class="btn btn-green bico" style="font-size:9px;padding:2px 6px" onclick="event.stopPropagation();addSelToCarpeta('${c.id}')" title="Añadir selección">＋</button>`:''}
       <button class="btn btn-red bico" style="font-size:9px;padding:2px 5px" onclick="event.stopPropagation();delCarpeta('${c.id}')">✕</button>
@@ -1627,6 +1636,21 @@ function toggleEpInfo(epId){
   el.classList.toggle('ep-info-collapsed');
   const btn=document.getElementById(`ep-info-btn-${epId}`);
   if(btn)btn.textContent=el.classList.contains('ep-info-collapsed')?'▼':'▲';
+}
+function renameCarpeta(carpetaId,el){
+  const c=S.carpetas.find(c=>c.id===carpetaId);if(!c)return;
+  const input=document.createElement('input');
+  input.value=c.name;
+  input.style.cssText='font-family:DM Sans,sans-serif;font-size:12px;background:var(--s3);border:none;outline:1px solid var(--gold2);border-radius:3px;padding:1px 4px;color:var(--txt);width:100%;max-width:140px';
+  el.replaceWith(input);
+  input.focus();input.select();
+  function done(){
+    const val=input.value.trim();
+    if(val&&val!==c.name){pushUndo();c.name=val;try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+    renderPool();
+  }
+  input.addEventListener('blur',done);
+  input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();done();}if(e.key==='Escape'){renderPool();}});
 }
 function toggleCsCaption(){
   S.csShowCaption=!S.csShowCaption;
@@ -1883,7 +1907,7 @@ document.addEventListener('keydown',e=>{
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{});});}
 
 // ── INIT ──────────────────────────────────────────────────────────────────
-load();render();applyGlobalLock();setTimeout(updateStorageBar,300);setInterval(updateStorageBar,10000);setInterval(autosave,5*60*1000);
+load();render();applyGlobalLock();setTimeout(updateStorageBar,300);setInterval(updateStorageBar,10000);setInterval(autosave,2*60*1000);
 </script>
 </body>
 </html>
