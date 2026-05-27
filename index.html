@@ -438,7 +438,8 @@ body.light .state-btn{background:var(--s2);border-color:var(--b2)}
   <div class="pool" id="pool">
     <div class="pool-tabs">
       <div class="pool-tab on" id="tab-nav" onclick="switchTab('nav')">Navegación</div>
-      <div class="pool-tab" id="tab-carp" onclick="switchTab('carp')">📁 Carpetas</div>
+      <div class="pool-tab" id="tab-carp" onclick="switchTab('carp')">Localización</div>
+      <div class="pool-tab" id="tab-plan" onclick="switchTab('plan')">Plan</div>
     </div>
 
     <!-- NAV PANEL -->
@@ -481,7 +482,19 @@ body.light .state-btn{background:var(--s2);border-color:var(--b2)}
       </div>
     </div>
 
-    <!-- CARPETAS PANEL -->
+    <!-- PLAN PANEL -->
+    <div class="pool-panel" id="panel-plan">
+      <div class="psec" style="max-height:42%">
+        <div class="phead"><span class="ptitle">Plan</span></div>
+        <div class="plist" id="plist-plan"></div>
+      </div>
+      <div class="psec flex1">
+        <div class="phead"><span class="ptitle" id="plan-detail-title">Secuencias</span></div>
+        <div class="plist" id="plist-plan-seqs"></div>
+      </div>
+    </div>
+
+    <!-- LOCALIZACIÓN PANEL -->
     <div class="pool-panel" id="panel-carp">
       <div class="psec" style="max-height:42%">
         <div class="phead"><span class="ptitle">Mis carpetas</span></div>
@@ -564,12 +577,16 @@ body.light .state-btn{background:var(--s2);border-color:var(--b2)}
 <!-- CARPETA MODAL -->
 <div class="movl" id="carp-modal">
   <div class="modal">
-    <h3>Nueva carpeta</h3>
-    <p>Las secuencias seleccionadas se añadirán como accesos sincronizados.</p>
-    <input id="carp-name-input" placeholder="Ej: Exteriores semana 1">
+    <h3>Nuevo grupo</h3>
+    <p>Nómbralo y elige dónde guardarlo.</p>
+    <input id="carp-name-input" placeholder="Ej: Exteriores semana 1" style="margin-bottom:10px">
+    <div style="display:flex;gap:6px;margin-bottom:4px">
+      <button class="btn" id="carp-dest-loc" onclick="setCarpDest('loc')" style="flex:1;border-color:var(--gold);color:var(--gold)">Localización</button>
+      <button class="btn" id="carp-dest-plan" onclick="setCarpDest('plan')" style="flex:1">Plan</button>
+    </div>
     <div class="mact">
       <button class="btn" onclick="closeCarpetaModal()">Cancelar</button>
-      <button class="btn btn-gold" onclick="createCarpeta()">Crear carpeta</button>
+      <button class="btn btn-gold" onclick="createCarpeta()">Crear</button>
     </div>
   </div>
 </div>
@@ -804,6 +821,7 @@ let S={
   currentProj:null,currentEp:null,currentSeq:null,currentCarpetaSeq:null,
   sel:[],poolOn:true,lightMode:false,poolTab:'nav',
   currentCarpeta:null,carpetas:[],
+  currentPlan:null,plan:[],
   collapsedSecs:{},csTabs:{},basicCollapsed:false,globalLock:false,
   projects:[]
 };
@@ -814,6 +832,8 @@ let undoStack=[];
 function migrate(){
   if(!S.sel)S.sel=[];
   if(!S.carpetas)S.carpetas=[];
+  if(!S.plan)S.plan=[];
+  if(S.currentPlan===undefined)S.currentPlan=null;
   if(!S.collapsedSecs)S.collapsedSecs={};
   if(!S.csTabs)S.csTabs={};
   if(S.basicCollapsed===undefined)S.basicCollapsed=false;
@@ -1250,15 +1270,30 @@ function swPanSeq(projId,epId,seqId){
 window.swPanSeq=swPanSeq;
 
 // ── CARPETAS ──────────────────────────────────────────────────────────────
-function openCarpetaModal(){if(!S.sel.length){toast('Selecciona secuencias primero');return;}document.getElementById('carp-modal').classList.add('open');setTimeout(()=>document.getElementById('carp-name-input').focus(),100);}
+let _carpDest='loc';
+function setCarpDest(d){
+  _carpDest=d;
+  const bl=document.getElementById('carp-dest-loc');
+  const bp=document.getElementById('carp-dest-plan');
+  if(bl){bl.style.borderColor=d==='loc'?'var(--gold)':'var(--b2)';bl.style.color=d==='loc'?'var(--gold)':'var(--txt2)';}
+  if(bp){bp.style.borderColor=d==='plan'?'var(--gold)':'var(--b2)';bp.style.color=d==='plan'?'var(--gold)':'var(--txt2)';}
+}
+function openCarpetaModal(){
+  if(!S.sel.length){toast('Selecciona secuencias primero');return;}
+  _carpDest='loc';setCarpDest('loc');
+  document.getElementById('carp-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('carp-name-input').focus(),100);
+}
 function closeCarpetaModal(){document.getElementById('carp-modal').classList.remove('open');}
 function createCarpeta(){pushUndo();
   const name=document.getElementById('carp-name-input').value.trim();if(!name){toast('Pon un nombre');return;}
   const refs=S.sel.map(s=>({projId:s.projId,epId:s.epId,seqId:s.seqId}));
   refs.sort((a,b)=>{const ra=findSeq(a.seqId);const rb=findSeq(b.seqId);if(!ra||!rb)return 0;return parseFloat(ra.seq.num)-parseFloat(rb.seq.num);});
-  const c={id:uid(),name,refs};S.carpetas.push(c);S.currentCarpeta=c.id;
+  const c={id:uid(),name,refs};
+  pushUndo();
+  if(_carpDest==='plan'){S.plan.push(c);S.currentPlan=c.id;}else{S.carpetas.push(c);S.currentCarpeta=c.id;}
   document.getElementById('carp-name-input').value='';
-  save();closeCarpetaModal();switchTab('carp');renderPool();toast('Carpeta creada ✓');
+  save();closeCarpetaModal();switchTab(_carpDest==='plan'?'plan':'carp');renderPool();toast('Grupo creado ✓');
 }
 function swCarpeta(id){S.currentCarpeta=id;S.currentCarpetaSeq=null;renderPool();}
 function delCarpeta(id){if(!confirm('¿Eliminar carpeta?'))return;pushUndo();S.carpetas=S.carpetas.filter(c=>c.id!==id);if(S.currentCarpeta===id){S.currentCarpeta=null;S.currentCarpetaSeq=null;}save();renderPool();}
@@ -1393,11 +1428,11 @@ function render(){
   renderPool();renderMain();updateSelUI();
 }
 function renderPool(){
-  renderProjs();renderEps();renderSeqs();renderCarpetas();
+  renderProjs();renderEps();renderSeqs();renderCarpetas();renderPlan();
   const p=cProj();document.getElementById('proj-lbl').textContent=p?p.name:'—';
-  ['nav','carp'].forEach(t=>{
-    document.getElementById(`tab-${t}`).classList.toggle('on',t===S.poolTab);
-    document.getElementById(`panel-${t}`).classList.toggle('on',t===S.poolTab);
+  ['nav','carp','plan'].forEach(t=>{
+    document.getElementById(`tab-${t}`)?.classList.toggle('on',t===S.poolTab);
+    document.getElementById(`panel-${t}`)?.classList.toggle('on',t===S.poolTab);
   });
 }
 function renderProjs(){
@@ -2064,7 +2099,132 @@ document.addEventListener('keydown',e=>{
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{});});}
 
 // ── INIT ──────────────────────────────────────────────────────────────────
-load();render();applyGlobalLock();setTimeout(updateStorageBar,300);setInterval(updateStorageBar,10000);setInterval(autosave,2*60*1000);
+load();render();applyGlobalLock();setTimeout(updateStorageBar,300);
+// ── PLAN FUNCTIONS ────────────────────────────────────────────────────────
+function renderPlan(){
+  const hasSel=S.sel&&S.sel.length>0;
+  const planList=document.getElementById('plist-plan');
+  if(!planList)return;
+  if(!S.plan||!S.plan.length){
+    planList.innerHTML='<div class="phint">Sin grupos — crea uno seleccionando secuencias</div>';
+    const sl=document.getElementById('plist-plan-seqs');if(sl)sl.innerHTML='';
+    const t=document.getElementById('plan-detail-title');if(t)t.textContent='Secuencias';
+    return;
+  }
+  planList.innerHTML=S.plan.map((c,ci)=>
+    `<div class="carpeta-item${c.id===S.currentPlan?' active':''}" onclick="swPlan('${c.id}')">
+      <div style="display:flex;flex-direction:column;gap:1px;flex-shrink:0">
+        <button class="sec-arrow" style="width:16px;height:13px;font-size:8px" onclick="event.stopPropagation();planMover(${ci},-1)">▲</button>
+        <button class="sec-arrow" style="width:16px;height:13px;font-size:8px" onclick="event.stopPropagation();planMover(${ci},1)">▼</button>
+      </div>
+      <span style="font-size:12px">📋</span>
+      <span class="carpeta-name" onclick="event.stopPropagation();swPlan('${c.id}')">${esc(c.name)}</span>
+      <span class="carpeta-count">${c.refs.length}</span>
+      ${hasSel?`<button class="btn btn-green bico" style="font-size:9px;padding:2px 6px" onclick="event.stopPropagation();addSelToPlan('${c.id}')" title="Añadir selección">＋</button>`:''}
+      <button class="pcollapse" style="font-size:10px;opacity:.5;padding:2px 5px" onclick="event.stopPropagation();editarPlan('${c.id}')" title="Renombrar">✎</button>
+      <button class="btn btn-red bico" style="font-size:9px;padding:2px 5px" onclick="event.stopPropagation();delPlan('${c.id}')">✕</button>
+    </div>`
+  ).join('')||'<div class="phint">Sin grupos</div>';
+  const c=S.plan.find(c=>c.id===S.currentPlan);
+  const title=document.getElementById('plan-detail-title');
+  const seqList=document.getElementById('plist-plan-seqs');
+  if(!c){if(seqList)seqList.innerHTML='<div class="phint">Selecciona un grupo</div>';if(title)title.textContent='Secuencias';return;}
+  if(title)title.textContent=c.name;
+  const actId=S.currentCarpetaSeq?.seqId;
+  if(seqList)seqList.innerHTML=c.refs.map((ref,ri)=>{
+    const r=findSeq(ref.seqId);if(!r)return'';
+    const sky=getSky(r.seq.skyColor||'');
+    const wsC=r.seq.workState&&r.seq.workState!=='pending'?` ws-${r.seq.workState}`:'';
+    const sel=isSel(r.ep.id,r.seq.id);
+    return`<div class="pitem${r.seq.id===actId?' active':''}${wsC}" onclick="swPlanSeq('${r.proj.id}','${r.ep.id}','${r.seq.id}')">
+      ${sky.bg?`<div class="pitem-sky" style="background:${sky.bg}"></div>`:''}
+      <div class="pcheck${sel?' on':''}" onclick="event.stopPropagation();togSel('${r.ep.id}','${r.seq.id}',event)"></div>
+      <span class="pnum">S${r.seq.num}</span>
+      <div style="flex:1;overflow:hidden">
+        <div class="pn">${esc(r.seq.nombre)}</div>
+        <div class="spills"><span class="sp" style="background:rgba(200,169,110,.15);color:var(--gold2)">E${String(r.ep.num).padStart(2,'0')}</span>${spIE(r.seq.int_ext)}${spMom(r.seq.momento)}${spDif(r.seq.dificultad)}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:1px">
+        <button class="sec-arrow" style="width:16px;height:14px;font-size:8px" onclick="event.stopPropagation();movePlanRef('${c.id}','${ref.seqId}',-1)">▲</button>
+        <button class="sec-arrow" style="width:16px;height:14px;font-size:8px" onclick="event.stopPropagation();movePlanRef('${c.id}','${ref.seqId}',1)">▼</button>
+      </div>
+      <button class="pcollapse" style="font-size:10px;opacity:.5" onclick="removeFromPlan('${c.id}','${ref.seqId}',event)">✕</button>
+    </div>`;
+  }).join('')||'<div class="phint">Sin secuencias</div>';
+}
+function swPlan(id){S.currentPlan=id;S.currentCarpetaSeq=null;renderPool();}
+function delPlan(id){
+  if(!confirm('¿Eliminar grupo?'))return;pushUndo();
+  S.plan=S.plan.filter(c=>c.id!==id);
+  if(S.currentPlan===id)S.currentPlan=null;
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+  renderPool();
+}
+function addSelToPlan(planId){
+  const c=S.plan.find(c=>c.id===planId);if(!c)return;
+  const p=cProj();let added=0;
+  S.sel.forEach(sel=>{
+    if(!c.refs.find(r=>r.seqId===sel.seqId)){c.refs.push({projId:sel.projId||p?.id||'',epId:sel.epId,seqId:sel.seqId});added++;}
+  });
+  c.refs.sort((a,b)=>{const ra=findSeq(a.seqId);const rb=findSeq(b.seqId);if(!ra||!rb)return 0;return parseFloat(ra.seq.num)-parseFloat(rb.seq.num);});
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+  renderPool();toast(`${added} secuencia${added!==1?'s':''} añadida${added!==1?'s':''} ✓`);
+}
+function planMover(idx,dir){
+  const j=idx+dir;if(j<0||j>=S.plan.length)return;pushUndo();
+  [S.plan[idx],S.plan[j]]=[S.plan[j],S.plan[idx]];
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+  renderPool();
+}
+function editarPlan(id){
+  const c=S.plan.find(c=>c.id===id);if(!c)return;
+  const nombre=prompt('Nombre del grupo:',c.name);
+  if(nombre===null)return;const val=nombre.trim();
+  if(!val||val===c.name)return;
+  pushUndo();c.name=val;
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+  renderPool();
+}
+function movePlanRef(planId,seqId,dir){
+  const c=S.plan.find(c=>c.id===planId);if(!c)return;
+  const i=c.refs.findIndex(r=>r.seqId===seqId);if(i<0)return;
+  const j=i+dir;if(j<0||j>=c.refs.length)return;
+  [c.refs[i],c.refs[j]]=[c.refs[j],c.refs[i]];
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+  renderPool();
+}
+function removeFromPlan(planId,seqId,e){
+  e.stopPropagation();
+  const c=S.plan.find(c=>c.id===planId);if(!c)return;
+  c.refs=c.refs.filter(r=>r.seqId!==seqId);
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e2){}
+  renderPool();
+}
+function swPlanSeq(projId,epId,seqId){
+  S.currentProj=projId;S.currentEp=epId;S.currentSeq=seqId;S.currentCarpetaSeq={projId,epId,seqId};
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+  renderPool();renderMain();document.getElementById('main').scrollTop=0;
+}
+
+// ── SWIPE TO CHANGE TAB ───────────────────────────────────────────────────
+(function(){
+  const TABS=['nav','carp','plan'];
+  let sx=null,sy=null;
+  const pool=document.getElementById('pool');
+  if(!pool)return;
+  pool.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+  pool.addEventListener('touchend',e=>{
+    if(sx===null)return;
+    const dx=e.changedTouches[0].clientX-sx;
+    const dy=e.changedTouches[0].clientY-sy;
+    sx=null;sy=null;
+    if(Math.abs(dx)<40||Math.abs(dy)>Math.abs(dx))return;
+    const cur=TABS.indexOf(S.poolTab);
+    if(dx<0&&cur<TABS.length-1)switchTab(TABS[cur+1]);
+    if(dx>0&&cur>0)switchTab(TABS[cur-1]);
+  },{passive:true});
+})();
+setInterval(updateStorageBar,10000);setInterval(autosave,2*60*1000);
 </script>
 </body>
 </html>
